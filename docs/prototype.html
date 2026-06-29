@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:'Onest',system-ui,sans-serif;background:#EEF0F6;color:#15161F;-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#D5D7E2;border-radius:9px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.35}}
+  input,textarea,select,button{font-family:inherit}
+  input:focus,textarea:focus,select:focus{outline:none}
+</style>
+</helmet>
+
+<div style="min-height:100vh;width:100%">
+
+<sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:4px;background:#fff;border:1px solid #E3E5EE;border-radius:999px;padding:4px;box-shadow:0 6px 22px -12px rgba(20,22,40,.35)">
+    <button onClick="{{ setDesktop }}" style="{{ deskBtnStyle }}">Десктоп</button>
+    <button onClick="{{ setMobile }}" style="{{ mobBtnStyle }}">Telegram</button>
+  </div>
+</sc-if>
+
+<!-- ===================== LOGIN ===================== -->
+<sc-if value="{{ showLogin }}" hint-placeholder-val="{{ true }}">
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;background:#EEF0F6">
+  <div style="flex:1 1 420px;min-height:100vh;background:linear-gradient(150deg,#4F46E5 0%,#6D5DF6 55%,#7C4DFF 100%);color:#fff;padding:56px 52px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+    <div style="position:absolute;width:420px;height:420px;border-radius:50%;background:rgba(255,255,255,.08);top:-140px;right:-120px"></div>
+    <div style="position:absolute;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.06);bottom:-90px;left:-60px"></div>
+    <div style="display:flex;align-items:center;gap:12px;position:relative">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">{{ logoIcon }}</div>
+      <div style="font-weight:700;font-size:20px;letter-spacing:-.4px">Кампус</div>
+    </div>
+    <div style="position:relative;max-width:440px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;margin-bottom:18px">Учебная практика</div>
+      <h1 style="font-size:42px;line-height:1.08;font-weight:800;letter-spacing:-1.2px;margin:0 0 18px">Университетская база знаний и учебные очереди</h1>
+      <p style="font-size:16px;line-height:1.6;opacity:.86;margin:0">Интеллектуальный поиск по внутренним документам университета и удобная запись в учебные очереди — в одном сервисе. Работает как сайт и как Telegram Mini App.</p>
+    </div>
+    <div style="position:relative;display:flex;gap:26px;font-size:13px;opacity:.78">
+      <div><div style="font-size:22px;font-weight:700">4</div>документа</div>
+      <div><div style="font-size:22px;font-weight:700">286</div>фрагментов</div>
+      <div><div style="font-size:22px;font-weight:700">3</div>активные очереди</div>
+    </div>
+  </div>
+  <div style="flex:1 1 420px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 28px">
+    <div style="width:100%;max-width:400px;animation:fadeUp .4s ease both">
+      <h2 style="font-size:26px;font-weight:700;letter-spacing:-.6px;margin:0 0 6px">Вход в систему</h2>
+      <p style="color:#6B6E80;font-size:15px;margin:0 0 28px">Выберите роль, чтобы продолжить в демо-режиме</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button onClick="{{ loginStudent }}" style="display:flex;align-items:center;gap:14px;text-align:left;width:100%;background:#fff;border:1px solid #E3E5EE;border-radius:16px;padding:16px;cursor:pointer">
+          <div style="width:42px;height:42px;border-radius:12px;background:#4F46E5;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto">{{ gradIcon }}</div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px">Войти как студент</div><div style="color:#8A8D9C;font-size:13px;margin-top:1px">Очереди, поиск, документы</div></div>
+          <div style="color:#C2C5D2">{{ chev }}</div>
+        </button>
+        <button onClick="{{ loginTeacher }}" style="display:flex;align-items:center;gap:14px;text-align:left;width:100%;background:#fff;border:1px solid #E3E5EE;border-radius:16px;padding:16px;cursor:pointer">
+          <div style="width:42px;height:42px;border-radius:12px;background:#0E9F6E;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto">{{ bookIcon }}</div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px">Войти как преподаватель</div><div style="color:#8A8D9C;font-size:13px;margin-top:1px">Создание очередей и dashboard</div></div>
+          <div style="color:#C2C5D2">{{ chev }}</div>
+        </button>
+        <button onClick="{{ loginAdmin }}" style="display:flex;align-items:center;gap:14px;text-align:left;width:100%;background:#fff;border:1px solid #E3E5EE;border-radius:16px;padding:16px;cursor:pointer">
+          <div style="width:42px;height:42px;border-radius:12px;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto">{{ shieldIcon }}</div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px">Войти как администратор</div><div style="color:#8A8D9C;font-size:13px;margin-top:1px">Статистика и модерация базы</div></div>
+          <div style="color:#C2C5D2">{{ chev }}</div>
+        </button>
+      </div>
+      <div style="margin-top:22px;padding:12px 14px;background:#F4F2FF;border:1px solid #E6E2FF;border-radius:12px;color:#5B53B8;font-size:12.5px;line-height:1.5">
+        Это прототип. Реальная авторизация через SSO МТУСИ/TECH может быть подключена позже. Сейчас используются тестовые данные.
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ===================== APP SHELL ===================== -->
+<sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}">
+<div style="{{ shellStyle }}">
+
+  <!-- SIDEBAR (desktop) -->
+  <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+  <aside style="width:248px;flex:0 0 248px;background:#fff;border-right:1px solid #E7E9F1;height:100vh;position:sticky;top:0;display:flex;flex-direction:column;padding:18px 14px">
+    <div style="display:flex;align-items:center;gap:11px;padding:6px 8px 18px">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(150deg,#4F46E5,#7C4DFF);display:flex;align-items:center;justify-content:center;color:#fff">{{ logoIcon }}</div>
+      <div>
+        <div style="font-weight:700;font-size:16px;letter-spacing:-.3px">Кампус</div>
+        <div style="font-size:11px;color:#9A9DAC;margin-top:-1px">база знаний · очереди</div>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+        <button onClick="{{ n.onClick }}" style="{{ n.style }}">
+          <span style="display:flex;width:20px;justify-content:center">{{ n.icon }}</span>
+          <span style="flex:1;text-align:left">{{ n.label }}</span>
+          <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="background:#EEF0FE;color:#4F46E5;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px">{{ n.badge }}</span></sc-if>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;border-top:1px solid #EEF0F6;padding-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:#F7F8FC">
+        <div style="width:34px;height:34px;border-radius:50%;background:{{ avatarBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px">{{ userInitials }}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ userName }}</div>
+          <div style="font-size:11px;color:#9A9DAC">{{ roleLabel }}</div>
+        </div>
+        <button onClick="{{ logout }}" title="Выйти" style="background:none;border:none;cursor:pointer;color:#A6A9B8;padding:6px;border-radius:8px;display:flex" style-hover="background:#EEF0F6;color:#15161F">{{ logoutIcon }}</button>
+      </div>
+    </div>
+  </aside>
+  </sc-if>
+
+  <!-- MAIN -->
+  <div style="{{ mainStyle }}">
+
+    <!-- mobile header -->
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <header style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #EEF0F6;background:#fff;flex:0 0 auto">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,#4F46E5,#7C4DFF);display:flex;align-items:center;justify-content:center;color:#fff">{{ logoIcon }}</div>
+        <div style="font-weight:700;font-size:15px">{{ pageTitle }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button style="background:#F4F5F9;border:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6B6E80;position:relative">{{ bellIcon }}<span style="position:absolute;top:8px;right:9px;width:6px;height:6px;border-radius:50%;background:#F2545B"></span></button>
+        <button onClick="{{ goProfile }}" style="width:34px;height:34px;border-radius:50%;background:{{ avatarBg }};color:#fff;border:none;font-weight:600;font-size:12px">{{ userInitials }}</button>
+      </div>
+    </header>
+    </sc-if>
+
+    <!-- desktop topbar -->
+    <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+    <header style="display:flex;align-items:center;justify-content:space-between;padding:18px 210px 18px 30px;border-bottom:1px solid #EBEDF4;background:rgba(255,255,255,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20">
+      <div>
+        <div style="font-size:12px;color:#9A9DAC;font-weight:500">{{ roleLabel }} · Кампус</div>
+        <h1 style="font-size:21px;font-weight:700;letter-spacing:-.5px;margin:2px 0 0">{{ pageTitle }}</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div onClick="{{ goKb }}" style="display:flex;align-items:center;gap:9px;background:#F4F5F9;border:1px solid #EBEDF4;border-radius:12px;padding:9px 14px;width:260px;color:#9A9DAC;cursor:text;font-size:14px">{{ searchIconSm }}<span>Поиск по базе знаний…</span></div>
+        <button style="background:#fff;border:1px solid #EBEDF4;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#6B6E80;position:relative;cursor:pointer">{{ bellIcon }}<span style="position:absolute;top:9px;right:10px;width:7px;height:7px;border-radius:50%;background:#F2545B;border:2px solid #fff"></span></button>
+      </div>
+    </header>
+    </sc-if>
+
+    <!-- CONTENT -->
+    <div style="{{ contentStyle }}">
+
+      <!-- ============ DASHBOARD ============ -->
+      <sc-if value="{{ vDash }}" hint-placeholder-val="{{ true }}">
+
+        <!-- STUDENT dashboard -->
+        <sc-if value="{{ isStudent }}" hint-placeholder-val="{{ true }}">
+        <div style="animation:fadeUp .35s both">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:18px">
+            <div style="{{ heroStyle }}">
+              <div style="font-size:13px;opacity:.82;font-weight:500">Моя группа</div>
+              <div style="font-size:30px;font-weight:800;letter-spacing:-.6px;margin-top:2px">БПИ2403</div>
+              <div style="font-size:13px;opacity:.82;margin-top:auto">Программная инженерия · 2 курс</div>
+            </div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Активные очереди</div><div style="font-size:28px;font-weight:700;margin-top:4px">2</div><div style="font-size:12px;color:#16A34A;margin-top:2px">1 идёт сейчас</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Ближайшее занятие</div><div style="font-size:20px;font-weight:700;margin-top:6px">12:20 · А-402</div><div style="font-size:12px;color:#8A8D9C;margin-top:2px">Программная инженерия</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:{{ twoColGrid }};gap:16px">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h3 style="font-size:16px;font-weight:700;margin:0">Активные очереди для вашей группы</h3><button onClick="{{ goQueues }}" style="background:none;border:none;color:#4F46E5;font-weight:600;font-size:13px;cursor:pointer">Все →</button></div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ studentQueues }}" as="q" hint-placeholder-count="2">
+                  <div onClick="{{ q.open }}" style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:16px;cursor:pointer;box-shadow:0 1px 2px rgba(20,22,40,.03)" style-hover="border-color:#C9CCE0;box-shadow:0 12px 28px -20px rgba(20,22,40,.4)">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                      <div style="display:flex;gap:11px;align-items:center">
+                        <div style="{{ q.typeIconWrap }}">{{ q.typeIcon }}</div>
+                        <div><div style="font-weight:600;font-size:15px">{{ q.title }}</div><div style="font-size:12.5px;color:#8A8D9C;margin-top:1px">{{ q.teacher }} · {{ q.discipline }}</div></div>
+                      </div>
+                      <span style="{{ q.statusStyle }}">{{ q.statusLabel }}</span>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:13px;font-size:12.5px;color:#6B6E80">
+                      <span style="display:flex;align-items:center;gap:5px">{{ pinIcon }}{{ q.room }}</span>
+                      <span style="display:flex;align-items:center;gap:5px">{{ calIcon }}{{ q.when }}</span>
+                      <span style="display:flex;align-items:center;gap:5px">{{ usersIcon }}{{ q.count }} чел.</span>
+                    </div>
+                    <sc-if value="{{ q.myPos }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:12px;padding:9px 12px;background:#EEFBF3;border-radius:10px;color:#15803D;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px">{{ checkIcon }}Вы в очереди · позиция {{ q.myPos }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:700;margin:0 0 10px">Быстрый поиск по базе</h3>
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:16px;margin-bottom:16px">
+                <div style="display:flex;gap:8px">
+                  <input value="{{ query }}" onInput="{{ onQueryInput }}" onKeyDown="{{ onSearchKey }}" placeholder="Например: оформление лабораторных" style="flex:1;min-width:0;border:1px solid #E3E5EE;border-radius:11px;padding:11px 13px;font-size:14px;background:#F8F9FC" />
+                  <button onClick="{{ runSearch }}" style="background:#4F46E5;color:#fff;border:none;border-radius:11px;padding:0 16px;font-weight:600;font-size:14px;cursor:pointer">Найти</button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">
+                  <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+                    <button onClick="{{ h.onClick }}" style="background:#F4F5F9;border:1px solid #EBEDF4;border-radius:999px;padding:5px 11px;font-size:12.5px;color:#6B6E80;cursor:pointer" style-hover="border-color:#C9CCE0">{{ h.text }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <h3 style="font-size:16px;font-weight:700;margin:0 0 10px">Последние документы</h3>
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;overflow:hidden">
+                <sc-for list="{{ recentDocs }}" as="d" hint-placeholder-count="4">
+                  <div onClick="{{ goKb }}" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid #F1F2F8;cursor:pointer" style-hover="background:#FAFBFE">
+                    <div style="{{ d.badgeStyle }}">{{ d.type }}</div>
+                    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div><div style="font-size:11.5px;color:#9A9DAC">{{ d.frags }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- TEACHER dashboard -->
+        <sc-if value="{{ isTeacher }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:fadeUp .35s both">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Мои активные очереди</div><div style="font-size:28px;font-weight:700;margin-top:4px">2</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Студентов записано</div><div style="font-size:28px;font-weight:700;margin-top:4px">11</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Пар сегодня</div><div style="font-size:28px;font-weight:700;margin-top:4px">2</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:{{ twoColGrid }};gap:16px">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h3 style="font-size:16px;font-weight:700;margin:0">Ближайшие пары</h3><button onClick="{{ openCreate }}" style="background:none;border:none;color:#4F46E5;font-weight:600;font-size:13px;cursor:pointer">+ Создать вручную</button></div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ lessons }}" as="l" hint-placeholder-count="2">
+                  <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+                    <div style="display:flex;gap:13px;align-items:center">
+                      <div style="text-align:center;background:#EEF0FE;border-radius:12px;padding:9px 12px;min-width:62px"><div style="font-size:17px;font-weight:700;color:#4F46E5">{{ l.time }}</div><div style="font-size:11px;color:#7C7FE0">{{ l.room }}</div></div>
+                      <div><div style="font-weight:600;font-size:15px">{{ l.discipline }}</div><div style="font-size:12.5px;color:#8A8D9C;margin-top:1px">{{ l.group }} · {{ l.kind }}</div></div>
+                    </div>
+                    <button onClick="{{ l.create }}" style="background:#4F46E5;color:#fff;border:none;border-radius:11px;padding:10px 16px;font-weight:600;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:#4338CA">{{ plusIcon }}Создать очередь</button>
+                  </div>
+                </sc-for>
+              </div>
+              <h3 style="font-size:16px;font-weight:700;margin:22px 0 10px">Мои активные очереди</h3>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ teacherQueues }}" as="q" hint-placeholder-count="2">
+                  <div onClick="{{ q.open }}" style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:15px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px" style-hover="border-color:#C9CCE0">
+                    <div style="display:flex;gap:11px;align-items:center"><div style="{{ q.typeIconWrap }}">{{ q.typeIcon }}</div><div><div style="font-weight:600;font-size:14.5px">{{ q.title }}</div><div style="font-size:12px;color:#8A8D9C">{{ q.group }} · {{ q.room }} · {{ q.count }} чел.</div></div></div>
+                    <span style="{{ q.statusStyle }}">{{ q.statusLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:700;margin:0 0 10px">Быстрый поиск по базе</h3>
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:16px">
+                <div style="display:flex;gap:8px">
+                  <input value="{{ query }}" onInput="{{ onQueryInput }}" onKeyDown="{{ onSearchKey }}" placeholder="Поиск по документам…" style="flex:1;min-width:0;border:1px solid #E3E5EE;border-radius:11px;padding:11px 13px;font-size:14px;background:#F8F9FC" />
+                  <button onClick="{{ runSearch }}" style="background:#4F46E5;color:#fff;border:none;border-radius:11px;padding:0 16px;font-weight:600;font-size:14px;cursor:pointer">Найти</button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">
+                  <sc-for list="{{ history }}" as="h" hint-placeholder-count="3"><button onClick="{{ h.onClick }}" style="background:#F4F5F9;border:1px solid #EBEDF4;border-radius:999px;padding:5px 11px;font-size:12.5px;color:#6B6E80;cursor:pointer">{{ h.text }}</button></sc-for>
+                </div>
+              </div>
+              <div style="background:linear-gradient(150deg,#4F46E5,#7C4DFF);color:#fff;border-radius:16px;padding:18px;margin-top:16px">
+                <div style="font-weight:600;font-size:15px;margin-bottom:4px">Нет нужной группы?</div>
+                <div style="font-size:13px;opacity:.85;line-height:1.5;margin-bottom:13px">Создайте очередь вручную, указав дисциплину, аудиторию и время.</div>
+                <button onClick="{{ openCreate }}" style="background:#fff;color:#4F46E5;border:none;border-radius:11px;padding:10px 16px;font-weight:600;font-size:13.5px;cursor:pointer">Создать вручную</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ADMIN dashboard -->
+        <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:fadeUp .35s both">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Документов в базе</div><div style="font-size:28px;font-weight:700;margin-top:4px">4</div><div style="font-size:12px;color:#16A34A;margin-top:2px">286 фрагментов</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Поисковых запросов</div><div style="font-size:28px;font-weight:700;margin-top:4px">1 248</div><div style="font-size:12px;color:#8A8D9C;margin-top:2px">за 30 дней</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Активные очереди</div><div style="font-size:28px;font-weight:700;margin-top:4px">3</div></div>
+            <div style="{{ statCardStyle }}"><div style="color:#8A8D9C;font-size:13px">Ошибки индексации</div><div style="font-size:28px;font-weight:700;margin-top:4px;color:#E0484D">1</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:{{ twoColGrid }};gap:16px">
+            <div>
+              <h3 style="font-size:16px;font-weight:700;margin:0 0 10px">Последние загруженные файлы</h3>
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;overflow:hidden">
+                <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #F1F2F8">
+                    <div style="{{ d.badgeStyle }}">{{ d.type }}</div>
+                    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div><div style="font-size:11.5px;color:#9A9DAC">{{ d.date }} · {{ d.size }}</div></div>
+                    <span style="{{ d.statusStyle }}">{{ d.statusLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:700;margin:0 0 10px">Ошибки индексации</h3>
+              <div style="background:#fff;border:1px solid #F4D6D8;border-radius:16px;padding:16px">
+                <div style="display:flex;gap:11px;align-items:flex-start">
+                  <div style="width:34px;height:34px;border-radius:10px;background:#FDECEC;color:#E0484D;display:flex;align-items:center;justify-content:center;flex:0 0 auto">{{ alertIcon }}</div>
+                  <div><div style="font-weight:600;font-size:14px">Инструкция по работе с электронной средой.docx</div><div style="font-size:12.5px;color:#8A8D9C;margin-top:3px;line-height:1.5">Не удалось извлечь текст со страниц 4–6 (повреждённая таблица). Документ проиндексирован частично.</div>
+                  <button style="margin-top:10px;background:#FDECEC;color:#E0484D;border:none;border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer">Переиндексировать</button></div>
+                </div>
+              </div>
+              <h3 style="font-size:16px;font-weight:700;margin:20px 0 10px">Запросы за неделю</h3>
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:18px 16px">
+                <div style="display:flex;align-items:flex-end;gap:8px;height:110px">
+                  <sc-for list="{{ chartBars }}" as="b" hint-placeholder-count="7">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%">
+                      <div style="{{ b.barStyle }}"></div>
+                      <div style="font-size:11px;color:#9A9DAC">{{ b.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+      </sc-if>
+
+      <!-- ============ KNOWLEDGE BASE ============ -->
+      <sc-if value="{{ vKb }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .3s both;max-width:840px">
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="flex:1;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E3E5EE;border-radius:14px;padding:0 14px;box-shadow:0 1px 2px rgba(20,22,40,.03)">
+            <span style="color:#9A9DAC">{{ searchIconSm }}</span>
+            <input value="{{ query }}" onInput="{{ onQueryInput }}" onKeyDown="{{ onSearchKey }}" placeholder="Искать по содержанию документов…" style="flex:1;border:none;background:none;padding:14px 0;font-size:15px" />
+          </div>
+          <button onClick="{{ runSearch }}" style="background:#4F46E5;color:#fff;border:none;border-radius:14px;padding:0 24px;font-weight:600;font-size:15px;cursor:pointer" style-hover="background:#4338CA">Найти</button>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:18px">
+          <span style="font-size:12.5px;color:#9A9DAC;margin-right:2px">Фильтры:</span>
+          <sc-for list="{{ kbFilters }}" as="f" hint-placeholder-count="4"><button onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button></sc-for>
+        </div>
+
+        <!-- history row -->
+        <sc-if value="{{ showHistoryRow }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:600;color:#6B6E80;margin-bottom:8px">История запросов</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px">
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="3"><button onClick="{{ h.onClick }}" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #E7E9F1;border-radius:999px;padding:7px 13px;font-size:13px;color:#4B4E5E;cursor:pointer" style-hover="border-color:#C9CCE0">{{ clockIconSm }}{{ h.text }}</button></sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- results -->
+        <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:13px;color:#8A8D9C;margin-bottom:12px">Найдено {{ resultCount }} фрагментов по запросу «{{ activeQuery }}»</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ pagedResults }}" as="r" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:18px;box-shadow:0 1px 2px rgba(20,22,40,.03)">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:9px">
+                  <div style="display:flex;gap:10px;align-items:center;min-width:0">
+                    <div style="{{ r.badgeStyle }}">{{ r.type }}</div>
+                    <div style="min-width:0"><div style="font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.doc }}</div><div style="font-size:12px;color:#9A9DAC">Страница {{ r.page }}</div></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto"><div style="width:7px;height:7px;border-radius:50%;background:{{ r.relColor }}"></div><span style="font-size:12.5px;font-weight:600;color:{{ r.relColor }}">{{ r.relLabel }}</span></div>
+                </div>
+                <div style="font-size:14px;line-height:1.62;color:#3A3C4A">{{ r.snippet }}</div>
+                <div style="margin-top:12px;display:flex;gap:8px"><button style="background:#F4F5F9;border:1px solid #EBEDF4;border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:500;color:#4B4E5E;cursor:pointer" style-hover="border-color:#C9CCE0">Открыть документ</button><button style="background:none;border:none;color:#9A9DAC;font-size:12.5px;cursor:pointer">Контекст ±</button></div>
+              </div>
+            </sc-for>
+          </div>
+          <!-- pagination -->
+          <sc-if value="{{ showPagination }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:22px">
+            <sc-for list="{{ pages }}" as="p" hint-placeholder-count="2"><button onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button></sc-for>
+          </div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <!-- empty state -->
+        <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1px dashed #D7DAE6;border-radius:18px;padding:54px 30px;text-align:center;animation:fadeUp .3s both">
+          <div style="width:60px;height:60px;border-radius:16px;background:#F4F5F9;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#B4B7C6">{{ searchBigIcon }}</div>
+          <div style="font-size:17px;font-weight:700">По вашему запросу ничего не найдено</div>
+          <div style="font-size:14px;color:#8A8D9C;margin-top:6px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.55">Попробуйте изменить формулировку, убрать лишние слова или использовать синонимы.</div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <!-- ============ UPLOAD ============ -->
+      <sc-if value="{{ vUpload }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .3s both;max-width:860px">
+        <div onClick="{{ simulateUpload }}" style="border:2px dashed {{ dropBorder }};background:{{ dropBg }};border-radius:20px;padding:42px 24px;text-align:center;cursor:pointer;transition:.15s" style-hover="border-color:#4F46E5;background:#F3F2FF">
+          <div style="width:64px;height:64px;border-radius:18px;background:#EEF0FE;color:#4F46E5;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">{{ uploadBigIcon }}</div>
+          <div style="font-size:17px;font-weight:700">Перетащите файлы сюда</div>
+          <div style="font-size:14px;color:#8A8D9C;margin-top:5px">или нажмите, чтобы выбрать · PDF, DOCX · до 50 МБ</div>
+          <button onClick="{{ simulateUpload }}" style="margin-top:16px;background:#4F46E5;color:#fff;border:none;border-radius:12px;padding:11px 22px;font-weight:600;font-size:14px;cursor:pointer">Выбрать файлы</button>
+        </div>
+
+        <sc-if value="{{ hasUploads }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:20px">
+          <h3 style="font-size:16px;font-weight:700;margin:0 0 11px">Загрузка и индексация</h3>
+          <div style="display:flex;flex-direction:column;gap:11px">
+            <sc-for list="{{ uploads }}" as="u" hint-placeholder-count="2">
+              <div style="background:#fff;border:1px solid #E7E9F1;border-radius:14px;padding:14px 16px">
+                <div style="display:flex;align-items:center;gap:11px">
+                  <div style="{{ u.badgeStyle }}">{{ u.type }}</div>
+                  <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.name }}</div><div style="font-size:11.5px;color:#9A9DAC">{{ u.size }}</div></div>
+                  <span style="{{ u.statusStyle }}">{{ u.statusLabel }}</span>
+                </div>
+                <div style="margin-top:11px;height:6px;background:#EEF0F6;border-radius:999px;overflow:hidden"><div style="{{ u.barStyle }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <div style="margin-top:24px">
+          <h3 style="font-size:16px;font-weight:700;margin:0 0 11px">Загруженные документы</h3>
+          <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;overflow:hidden">
+            <div style="display:flex;padding:11px 16px;background:#FAFBFE;border-bottom:1px solid #EEF0F6;font-size:11.5px;font-weight:600;color:#9A9DAC;text-transform:uppercase;letter-spacing:.4px">
+              <div style="flex:1">Документ</div>
+              <div style="width:120px" class="hide-narrow">Дата</div>
+              <div style="width:90px" class="hide-narrow">Размер</div>
+              <div style="width:110px" class="hide-narrow">Фрагменты</div>
+              <div style="width:110px">Статус</div>
+            </div>
+            <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid #F1F2F8;font-size:13.5px">
+                <div style="flex:1;display:flex;align-items:center;gap:11px;min-width:0"><div style="{{ d.badgeStyle }}">{{ d.type }}</div><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</span></div>
+                <div style="width:120px;color:#8A8D9C" class="hide-narrow">{{ d.date }}</div>
+                <div style="width:90px;color:#8A8D9C" class="hide-narrow">{{ d.size }}</div>
+                <div style="width:110px;color:#8A8D9C" class="hide-narrow">{{ d.fragsNum }}</div>
+                <div style="width:110px"><span style="{{ d.statusStyle }}">{{ d.statusLabel }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ QUEUES LIST ============ -->
+      <sc-if value="{{ vQueues }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .3s both">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="display:flex;flex-wrap:wrap;gap:7px">
+            <sc-for list="{{ queueFilters }}" as="f" hint-placeholder-count="4"><button onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button></sc-for>
+          </div>
+          <sc-if value="{{ isTeacher }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openCreate }}" style="background:#4F46E5;color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="background:#4338CA">{{ plusIcon }}Создать очередь</button>
+          </sc-if>
+        </div>
+        <div style="display:grid;grid-template-columns:{{ queueGrid }};gap:13px">
+          <sc-for list="{{ filteredQueues }}" as="q" hint-placeholder-count="3">
+            <div onClick="{{ q.open }}" style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:17px;cursor:pointer;box-shadow:0 1px 2px rgba(20,22,40,.03);display:flex;flex-direction:column" style-hover="border-color:#C9CCE0;box-shadow:0 14px 30px -22px rgba(20,22,40,.45)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px">
+                <div style="{{ q.typeIconWrap }}">{{ q.typeIcon }}</div>
+                <span style="{{ q.statusStyle }}">{{ q.statusLabel }}</span>
+              </div>
+              <div style="font-weight:700;font-size:16px;letter-spacing:-.2px">{{ q.title }}</div>
+              <div style="font-size:13px;color:#8A8D9C;margin-top:2px">{{ q.discipline }} · {{ q.qtype }}</div>
+              <div style="border-top:1px solid #F1F2F8;margin-top:13px;padding-top:12px;display:flex;flex-direction:column;gap:7px;font-size:13px;color:#5B5E6E">
+                <span style="display:flex;align-items:center;gap:8px">{{ userIconSm }}{{ q.teacher }}</span>
+                <span style="display:flex;align-items:center;gap:8px">{{ pinIcon }}{{ q.room }} · {{ q.group }}</span>
+                <span style="display:flex;align-items:center;gap:8px">{{ calIcon }}{{ q.when }}</span>
+              </div>
+              <div style="margin-top:13px;display:flex;align-items:center;justify-content:space-between">
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600">{{ usersIcon }}{{ q.count }} / {{ q.max }}</span>
+                <span style="font-size:13px;color:#4F46E5;font-weight:600">Открыть →</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ noQueues }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1px dashed #D7DAE6;border-radius:16px;padding:42px;text-align:center;color:#8A8D9C">Нет очередей с выбранными фильтрами</div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <!-- ============ QUEUE DETAIL ============ -->
+      <sc-if value="{{ vDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .3s both;max-width:780px">
+        <button onClick="{{ goQueues }}" style="background:none;border:none;color:#8A8D9C;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-bottom:14px" style-hover="color:#15161F">← Назад к очередям</button>
+        <div style="background:#fff;border:1px solid #E7E9F1;border-radius:18px;padding:22px;margin-bottom:16px">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start">
+            <div style="display:flex;gap:14px;align-items:center">
+              <div style="{{ detail.typeIconWrapLg }}">{{ detail.typeIcon }}</div>
+              <div><h2 style="font-size:22px;font-weight:700;letter-spacing:-.5px;margin:0">{{ detail.title }}</h2><div style="font-size:13.5px;color:#8A8D9C;margin-top:3px">{{ detail.discipline }} · {{ detail.qtype }}</div></div>
+            </div>
+            <span style="{{ detail.statusStyle }}">{{ detail.statusLabel }}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">
+            <div style="flex:1 1 150px;background:#FAFBFE;border:1px solid #F1F2F8;border-radius:12px;padding:12px 14px"><div style="font-size:11.5px;color:#9A9DAC;margin-bottom:3px">Преподаватель</div><div style="font-size:14px;font-weight:600">{{ detail.teacher }}</div></div>
+            <div style="flex:1 1 110px;background:#FAFBFE;border:1px solid #F1F2F8;border-radius:12px;padding:12px 14px"><div style="font-size:11.5px;color:#9A9DAC;margin-bottom:3px">Аудитория</div><div style="font-size:14px;font-weight:600">{{ detail.room }}</div></div>
+            <div style="flex:1 1 110px;background:#FAFBFE;border:1px solid #F1F2F8;border-radius:12px;padding:12px 14px"><div style="font-size:11.5px;color:#9A9DAC;margin-bottom:3px">Группа</div><div style="font-size:14px;font-weight:600">{{ detail.group }}</div></div>
+            <div style="flex:1 1 150px;background:#FAFBFE;border:1px solid #F1F2F8;border-radius:12px;padding:12px 14px"><div style="font-size:11.5px;color:#9A9DAC;margin-bottom:3px">Дата и время</div><div style="font-size:14px;font-weight:600">{{ detail.when }}</div></div>
+          </div>
+          <sc-if value="{{ detail.comment }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px;font-size:13.5px;color:#5B5E6E;background:#FBF8FF;border:1px solid #EEE7FB;border-radius:12px;padding:12px 14px;line-height:1.5">💬 {{ detail.comment }}</div>
+          </sc-if>
+
+          <!-- student actions -->
+          <sc-if value="{{ isStudent }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ detail.myPos }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#EEFBF3;border:1px solid #CDEFD9;border-radius:14px;padding:14px 16px">
+                <div style="width:46px;height:46px;border-radius:50%;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">{{ detail.myPos }}</div>
+                <div style="flex:1"><div style="font-weight:600;font-size:14.5px;color:#15803D">Вы в очереди</div><div style="font-size:12.5px;color:#3E8B5C">Ваша позиция: {{ detail.myPos }} из {{ detail.count }}</div></div>
+                <button onClick="{{ leaveQueue }}" style="background:#fff;border:1px solid #CDEFD9;color:#E0484D;border-radius:11px;padding:10px 16px;font-weight:600;font-size:13.5px;cursor:pointer">Выйти из очереди</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ detail.canJoin }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ joinQueue }}" style="margin-top:16px;width:100%;background:#4F46E5;color:#fff;border:none;border-radius:13px;padding:14px;font-weight:600;font-size:15px;cursor:pointer" style-hover="background:#4338CA">Встать в очередь</button>
+            </sc-if>
+          </sc-if>
+        </div>
+
+        <!-- student list -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+          <h3 style="font-size:16px;font-weight:700;margin:0">Список студентов · {{ detail.count }}</h3>
+          <sc-if value="{{ teacherCanManage }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ closeQueue }}" style="background:#FDECEC;color:#E0484D;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">Закрыть очередь</button>
+          </sc-if>
+        </div>
+        <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;overflow:hidden">
+          <sc-for list="{{ detail.students }}" as="s" hint-placeholder-count="5">
+            <div style="{{ s.rowStyle }}">
+              <div style="width:30px;height:30px;border-radius:9px;background:{{ s.numBg }};color:{{ s.numColor }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:0 0 auto">{{ s.pos }}</div>
+              <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">{{ s.name }}</div><sc-if value="{{ s.tagText }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#9A9DAC">{{ s.tagText }}</div></sc-if></div>
+              <sc-if value="{{ teacherCanManage }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:4px">
+                  <button onClick="{{ s.up }}" title="Вверх" style="{{ s.upStyle }}">{{ arrowUpIcon }}</button>
+                  <button onClick="{{ s.down }}" title="Вниз" style="{{ s.downStyle }}">{{ arrowDownIcon }}</button>
+                  <button onClick="{{ s.remove }}" title="Удалить" style="background:none;border:1px solid #EBEDF4;color:#C7575C;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#FDECEC;border-color:#F4D6D8">{{ trashIcon }}</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ detail.noStudents }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px;text-align:center;color:#9A9DAC;font-size:13.5px">Пока никто не записался в очередь</div>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ PROFILE ============ -->
+      <sc-if value="{{ vProfile }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fadeUp .3s both;max-width:720px">
+        <div style="background:#fff;border:1px solid #E7E9F1;border-radius:18px;padding:22px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:16px">
+          <div style="width:66px;height:66px;border-radius:50%;background:{{ avatarBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px">{{ userInitials }}</div>
+          <div style="flex:1"><h2 style="font-size:21px;font-weight:700;margin:0">{{ userName }}</h2><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:7px;align-items:center"><span style="{{ roleBadgeStyle }}">{{ roleLabel }}</span><span style="font-size:13px;color:#8A8D9C">{{ profileAffil }}</span></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:{{ profileGrid }};gap:14px">
+          <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:18px">
+            <h3 style="font-size:15px;font-weight:700;margin:0 0 14px">Личные данные</h3>
+            <div style="display:flex;flex-direction:column;gap:13px">
+              <div><div style="font-size:12px;color:#9A9DAC;margin-bottom:3px">ФИО</div><div style="font-size:14px;font-weight:500">{{ userName }}</div></div>
+              <div><div style="font-size:12px;color:#9A9DAC;margin-bottom:3px">{{ profileAffilLabel }}</div><div style="font-size:14px;font-weight:500">{{ profileAffil }}</div></div>
+              <div><div style="font-size:12px;color:#9A9DAC;margin-bottom:3px">Telegram ID</div><div style="font-size:14px;font-weight:500;font-family:'Spline Sans Mono',monospace">@{{ tgId }}</div></div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E7E9F1;border-radius:16px;padding:18px">
+            <h3 style="font-size:15px;font-weight:700;margin:0 0 14px">Уведомления</h3>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ notifPrefs }}" as="p" hint-placeholder-count="3">
+                <div onClick="{{ p.toggle }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;cursor:pointer">
+                  <span style="font-size:13.5px">{{ p.label }}</span>
+                  <div style="{{ p.trackStyle }}"><div style="{{ p.knobStyle }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- integration card -->
+        <div style="background:linear-gradient(135deg,#F7F6FF,#FFFFFF);border:1px solid #E6E2FF;border-radius:18px;padding:20px;margin-top:14px">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start">
+            <div style="display:flex;gap:13px;align-items:center">
+              <div style="width:46px;height:46px;border-radius:13px;background:#fff;border:1px solid #E6E2FF;display:flex;align-items:center;justify-content:center;color:#4F46E5">{{ linkIcon }}</div>
+              <div>
+                <div style="display:flex;align-items:center;gap:9px"><h3 style="font-size:16px;font-weight:700;margin:0">Интеграция с МТУСИ / TECH</h3><span style="background:#F1F2F8;color:#8A8D9C;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:#B4B7C6"></span>Не подключено</span></div>
+                <div style="font-size:13px;color:#7A7D8C;margin-top:4px">Привяжите расписание, чтобы автоматически подтягивать пары и группы</div>
+              </div>
+            </div>
+            <button onClick="{{ toastIntegration }}" style="background:#4F46E5;color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap" style-hover="background:#4338CA">Привязать расписание</button>
+          </div>
+          <div style="margin-top:14px;background:#FFF8E8;border:1px solid #F6E6BC;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#8A6D2A;line-height:1.55">⚠️ Для прототипа используются тестовые данные. Реальная интеграция может быть подключена позже через официальный SSO или токен МТУСИ/TECH.</div>
+        </div>
+
+        <button onClick="{{ logout }}" style="margin-top:16px;background:#fff;border:1px solid #E7E9F1;color:#E0484D;border-radius:12px;padding:12px 18px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px" style-hover="border-color:#F4D6D8;background:#FFF8F8">{{ logoutIcon }}Выйти из аккаунта</button>
+      </div>
+      </sc-if>
+
+    </div>
+
+    <!-- bottom nav (mobile) -->
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <nav style="flex:0 0 auto;display:flex;border-top:1px solid #EEF0F6;background:#fff;padding:7px 6px 9px">
+      <sc-for list="{{ bottomNav }}" as="b" hint-placeholder-count="4">
+        <button onClick="{{ b.onClick }}" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;color:{{ b.color }}">
+          {{ b.icon }}
+          <span style="font-size:10.5px;font-weight:{{ b.weight }}">{{ b.label }}</span>
+        </button>
+      </sc-for>
+    </nav>
+    </sc-if>
+
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ CREATE QUEUE MODAL ============ -->
+<sc-if value="{{ creating }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeCreate }}" style="position:fixed;inset:0;background:rgba(20,22,40,.45);backdrop-filter:blur(3px);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeUp .2s both">
+  <div onClick="{{ stop }}" style="background:#fff;border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow:auto;box-shadow:0 30px 70px -20px rgba(20,22,40,.5)">
+    <div style="padding:20px 22px;border-bottom:1px solid #EEF0F6;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff">
+      <h3 style="font-size:18px;font-weight:700;margin:0">Создание очереди</h3>
+      <button onClick="{{ closeCreate }}" style="background:#F4F5F9;border:none;width:34px;height:34px;border-radius:10px;cursor:pointer;color:#6B6E80;display:flex;align-items:center;justify-content:center">{{ xIcon }}</button>
+    </div>
+    <div style="padding:22px;display:flex;flex-direction:column;gap:14px">
+      <div><label style="{{ lblStyle }}">Название очереди</label><input value="{{ form.title }}" onInput="{{ formTitle }}" placeholder="Например: Защита лабораторной №4" style="{{ inputStyle }}" /></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1 1 180px"><label style="{{ lblStyle }}">Дисциплина</label><input value="{{ form.discipline }}" onInput="{{ formDiscipline }}" placeholder="Программная инженерия" style="{{ inputStyle }}" /></div>
+        <div style="flex:1 1 120px"><label style="{{ lblStyle }}">Группа</label><select value="{{ form.group }}" onChange="{{ formGroup }}" style="{{ inputStyle }}"><option>БПИ2403</option><option>БВТ2401</option><option>БСТ2302</option></select></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1 1 120px"><label style="{{ lblStyle }}">Аудитория</label><input value="{{ form.room }}" onInput="{{ formRoom }}" placeholder="А-402" style="{{ inputStyle }}" /></div>
+        <div style="flex:1 1 160px"><label style="{{ lblStyle }}">Дата и время</label><input value="{{ form.datetime }}" onInput="{{ formDatetime }}" placeholder="28.06 · 12:20" style="{{ inputStyle }}" /></div>
+      </div>
+      <div><label style="{{ lblStyle }}">Тип очереди</label>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          <sc-for list="{{ typeOptions }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for>
+        </div>
+      </div>
+      <div><label style="{{ lblStyle }}">Максимум студентов</label><input value="{{ form.max }}" onInput="{{ formMax }}" placeholder="15" style="{{ inputStyle }}" /></div>
+      <div><label style="{{ lblStyle }}">Комментарий преподавателя</label><textarea value="{{ form.comment }}" onInput="{{ formComment }}" placeholder="Необязательно" style="{{ inputStyle }};min-height:70px;resize:vertical"></textarea></div>
+    </div>
+    <div style="padding:16px 22px;border-top:1px solid #EEF0F6;display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:#fff">
+      <button onClick="{{ closeCreate }}" style="background:#F4F5F9;border:none;border-radius:11px;padding:11px 18px;font-weight:600;font-size:14px;cursor:pointer;color:#4B4E5E">Отмена</button>
+      <button onClick="{{ submitQueue }}" style="background:#4F46E5;color:#fff;border:none;border-radius:11px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer">Создать очередь</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- TOAST -->
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;background:#15161F;color:#fff;padding:13px 20px;border-radius:13px;font-size:13.5px;font-weight:500;box-shadow:0 16px 40px -12px rgba(0,0,0,.4);display:flex;align-items:center;gap:9px;animation:fadeUp .25s both">{{ checkIcon }}{{ toast }}</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:860}}">
+class Component extends DCLogic {
+  state = {
+    role: null,
+    view: 'dashboard',
+    device: 'desktop',
+    query: '',
+    activeQuery: '',
+    searched: false,
+    page: 1,
+    history: ['оформление лабораторных', 'регламент пересдачи', 'курсовой проект'],
+    kbType: 'all',
+    qFilter: 'all',
+    detailId: null,
+    creating: false,
+    form: { title: '', discipline: '', group: 'БПИ2403', room: '', datetime: '', qtype: 'Лабораторная', max: '15', comment: '' },
+    toast: null,
+    docs: [
+      { id: 1, name: 'Методические указания по программной инженерии.pdf', type: 'PDF', date: '12.06.2026', size: '2.4 МБ', frags: 128, status: 'done' },
+      { id: 2, name: 'Правила оформления лабораторных работ.docx', type: 'DOCX', date: '09.06.2026', size: '540 КБ', frags: 64, status: 'done' },
+      { id: 3, name: 'Регламент пересдач.pdf', type: 'PDF', date: '03.06.2026', size: '1.1 МБ', frags: 47, status: 'done' },
+      { id: 4, name: 'Инструкция по работе с электронной средой.docx', type: 'DOCX', date: '01.06.2026', size: '820 КБ', frags: 0, status: 'error' },
+    ],
+    uploads: [],
+    queues: [
+      { id: 1, title: 'Защита лабораторной №4', discipline: 'Программная инженерия', qtype: 'Защита', teacher: 'Иванов И.И.', room: 'А-402', group: 'БПИ2403', when: '28.06 · 12:20', max: 12, status: 'live', comment: 'Принести отчёт и работающий прототип. Очередь живая, подходите по позиции.', students: [
+        { id: 1, name: 'Соколов А.М.' }, { id: 2, name: 'Кузнецова Е.В.' }, { id: 3, name: 'Морозов Д.А.' }, { id: 4, name: 'Новикова И.С.' }, { id: 5, name: 'Волков П.Р.' }, { id: 6, name: 'Зайцева О.Н.' },
+      ] },
+      { id: 2, title: 'Консультация по курсовому проекту', discipline: 'Базы данных', qtype: 'Консультация', teacher: 'Петрова А.С.', room: 'Б-215', group: 'БВТ2401', when: '28.06 · 14:00', max: 10, status: 'open', comment: 'Подготовьте список вопросов по схеме базы данных.', students: [
+        { id: 1, name: 'Лебедев К.И.' }, { id: 2, name: 'Орлова М.Д.' }, { id: 3, name: 'Семёнов В.А.' }, { id: 4, name: 'Тихонова Я.С.' }, { id: 5, name: 'Гусев Р.Н.' },
+      ] },
+      { id: 3, title: 'Пересдача по базам данных', discipline: 'Базы данных', qtype: 'Пересдача', teacher: 'Смирнов Д.В.', room: 'В-101', group: 'БСТ2302', when: '27.06 · 10:30', max: 8, status: 'closed', comment: '', students: [
+        { id: 1, name: 'Беляев А.А.' }, { id: 2, name: 'Фролова Н.К.' },
+      ] },
+    ],
+    notif: { queue: true, search: false, schedule: true },
+  };
+
+  // ---------- icons ----------
+  ic(inner, size, sw) {
+    return React.createElement('svg', { width: size || 20, height: size || 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: sw || 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: inner } });
+  }
+  icon(name, size, sw) {
+    const P = {
+      home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
+      upload: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>',
+      queues: '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6.2 8-6.2S20 16 20 20"/>',
+      file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 1.8"/>',
+      plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+      check: '<path d="m5 12.5 4.5 4.5L19 6"/>',
+      x: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
+      chev: '<path d="m9 6 6 6-6 6"/>',
+      logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 12h10"/><path d="m17 9 3 3-3 3"/>',
+      bell: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 7 2 7H4s2-2 2-7"/><path d="M10 19.5a2 2 0 0 0 4 0"/>',
+      alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.4v.2"/>',
+      trash: '<path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6.5 7l1 13h9l1-13"/>',
+      arrowUp: '<path d="M12 19V6"/><path d="m6.5 11 5.5-5.5L17.5 11"/>',
+      arrowDown: '<path d="M12 5v13"/><path d="m6.5 13 5.5 5.5L17.5 13"/>',
+      users: '<circle cx="9" cy="8" r="3.4"/><path d="M3 19c0-3 3-4.6 6-4.6S15 16 15 19"/><path d="M16 5.2a3 3 0 0 1 0 5.8"/><path d="M17.5 14.4c2 .5 3.5 1.8 3.5 4.6"/>',
+      pin: '<path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
+      cal: '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 9.5h18"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+      book: '<path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V20"/>',
+      grad: '<path d="m12 4 9 4-9 4-9-4 9-4Z"/><path d="M5 10v4.5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V10"/>',
+      shield: '<path d="M12 3 5 6v5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/>',
+      lab: '<path d="M9 3v6L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L15 9V3"/><path d="M8 3h8"/><path d="M7.5 14h9"/>',
+      defense: '<path d="M12 3 5 6v5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9.5 12 2 2 3.5-3.5"/>',
+      chat: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.4A8 8 0 1 1 21 12Z"/>',
+      retry: '<path d="M4 12a8 8 0 1 1 2.3 5.6"/><path d="M4 20v-4h4"/>',
+      link: '<path d="M9.5 14.5 14.5 9.5"/><path d="M11 6.5l1.2-1.2a4 4 0 0 1 5.6 5.6L16.5 12"/><path d="M13 17.5l-1.2 1.2a4 4 0 0 1-5.6-5.6L7.5 12"/>',
+    };
+    return this.ic(P[name] || '', size, sw);
+  }
+  qIcon(qtype) { return ({ 'Защита': 'defense', 'Лабораторная': 'lab', 'Консультация': 'chat', 'Пересдача': 'retry' })[qtype] || 'queues'; }
+
+  // ---------- corpus ----------
+  corpus = [
+    { doc: 'Методические указания по программной инженерии.pdf', type: 'PDF', page: 14, rel: 0.96, text: 'Лабораторная работа №4 посвящена проектированию программной архитектуры. Защита лабораторной проводится в форме демонстрации работающего прототипа и ответов на вопросы преподавателя.' },
+    { doc: 'Правила оформления лабораторных работ.docx', type: 'DOCX', page: 3, rel: 0.91, text: 'Каждая лабораторная работа оформляется по единому шаблону: титульный лист, цель работы, ход выполнения, листинги кода и выводы. Несоблюдение правил оформления является основанием для возврата работы на доработку.' },
+    { doc: 'Регламент пересдач.pdf', type: 'PDF', page: 2, rel: 0.88, text: 'Пересдача назначается не ранее чем через три дня после получения неудовлетворительной оценки. Студент обязан заранее записаться в очередь на пересдачу через электронную среду университета.' },
+    { doc: 'Методические указания по программной инженерии.pdf', type: 'PDF', page: 27, rel: 0.83, text: 'Курсовой проект выполняется индивидуально. Консультации по курсовому проекту проводятся еженедельно согласно расписанию кафедры программной инженерии.' },
+    { doc: 'Инструкция по работе с электронной средой.docx', type: 'DOCX', page: 1, rel: 0.79, text: 'Для доступа к электронной образовательной среде используйте корпоративную учётную запись. В среде доступны материалы курсов, а также очереди на защиту и сдачу лабораторных работ.' },
+    { doc: 'Правила оформления лабораторных работ.docx', type: 'DOCX', page: 7, rel: 0.72, text: 'Листинги программного кода приводятся моноширинным шрифтом. Для больших фрагментов кода рекомендуется выносить их в приложение к лабораторной работе.' },
+    { doc: 'Регламент пересдач.pdf', type: 'PDF', page: 5, rel: 0.67, text: 'Количество пересдач по одной дисциплине ограничено. После третьей неудачной попытки вопрос рассматривается на заседании кафедры программной инженерии.' },
+  ];
+
+  // ---------- helpers ----------
+  showToast(msg) { this.setState({ toast: msg }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: null }), 2600); }
+  go(view) { this.setState({ view }); }
+  docBadge(type) {
+    const pdf = type === 'PDF';
+    return { background: pdf ? '#FDECEC' : '#E8F0FE', color: pdf ? '#D7494E' : '#2C6BD6', fontSize: '10.5px', fontWeight: 700, padding: '4px 8px', borderRadius: '7px', flex: '0 0 auto', fontFamily: "'Spline Sans Mono', monospace" };
+  }
+  statusChip(status) {
+    const m = {
+      done: ['Готово', '#16A34A', '#EAF8EF'], indexing: ['Индексация…', '#B45309', '#FEF4E2'], uploading: ['Загрузка…', '#2C6BD6', '#E8F0FE'], error: ['Ошибка', '#D7494E', '#FDECEC'],
+      open: ['Открыта', '#16A34A', '#EAF8EF'], live: ['Идёт сейчас', '#7C3AED', '#F1ECFE'], closed: ['Закрыта', '#8A8D9C', '#F1F2F8'],
+    };
+    const [label, color, bg] = m[status] || ['—', '#8A8D9C', '#F1F2F8'];
+    const dot = status === 'live' || status === 'indexing' || status === 'uploading';
+    return { label, style: { background: bg, color, fontSize: '11.5px', fontWeight: 600, padding: '4px 11px', borderRadius: '999px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '5px', animation: dot ? 'none' : 'none' } };
+  }
+  highlight(text) {
+    const q = (this.state.activeQuery || '').trim().toLowerCase();
+    if (!q) return text;
+    const tokens = q.split(/\s+/).filter(t => t.length > 2);
+    if (!tokens.length) return text;
+    const re = new RegExp('(' + tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+    const parts = text.split(re);
+    const set = new Set(tokens);
+    return parts.map((p, i) => set.has(p.toLowerCase())
+      ? React.createElement('mark', { key: i, style: { background: '#FCE96A', color: 'inherit', borderRadius: '3px', padding: '0 1px' } }, p)
+      : React.createElement('span', { key: i }, p));
+  }
+
+  // ---------- search ----------
+  doSearch(q) {
+    const query = (q != null ? q : this.state.query).trim();
+    if (!query) return;
+    const hist = [query, ...this.state.history.filter(h => h !== query)].slice(0, 6);
+    this.setState({ activeQuery: query, query, searched: true, page: 1, history: hist, view: 'kb' });
+  }
+  results() {
+    const q = this.state.activeQuery.trim().toLowerCase();
+    if (!this.state.searched || !q) return [];
+    const tokens = q.split(/\s+/).filter(Boolean);
+    let r = this.corpus.filter(c => {
+      const hay = (c.text + ' ' + c.doc).toLowerCase();
+      return tokens.some(t => hay.includes(t));
+    });
+    if (this.state.kbType !== 'all') r = r.filter(c => c.type === this.state.kbType);
+    return r.sort((a, b) => b.rel - a.rel);
+  }
+
+  // ---------- uploads ----------
+  simulateUpload = () => {
+    const pool = [
+      { name: 'Лекция 7 — Паттерны проектирования.pdf', type: 'PDF', size: '3.1 МБ' },
+      { name: 'Шаблон отчёта по практике.docx', type: 'DOCX', size: '320 КБ' },
+      { name: 'Расписание защит ВКР.pdf', type: 'PDF', size: '680 КБ' },
+    ];
+    const pick = pool[this.state.uploads.length % pool.length];
+    const id = Date.now();
+    const up = { id, name: pick.name, type: pick.type, size: pick.size, progress: 0, status: 'uploading' };
+    this.setState(s => ({ uploads: [up, ...s.uploads] }));
+    const iv = setInterval(() => {
+      this.setState(s => {
+        const ups = s.uploads.map(u => {
+          if (u.id !== id) return u;
+          let p = u.progress + 9 + Math.random() * 8, st = u.status;
+          if (p >= 100) { p = 100; st = u.status === 'uploading' ? 'indexing' : 'done'; }
+          return { ...u, progress: p, status: st };
+        });
+        return { uploads: ups };
+      });
+      const cur = this.state.uploads.find(u => u.id === id);
+      if (cur && cur.status === 'done') {
+        clearInterval(iv);
+        this.setState(s => ({ docs: [{ id, name: pick.name, type: pick.type, date: '28.06.2026', size: pick.size, frags: 30 + Math.floor(Math.random() * 90), status: 'done' }, ...s.docs] }));
+        this.showToast('Документ проиндексирован и добавлен в базу');
+      } else if (cur && cur.status === 'indexing' && cur.progress >= 100) {
+        // restart progress for indexing phase
+        this.setState(s => ({ uploads: s.uploads.map(u => u.id === id ? { ...u, progress: 8 } : u) }));
+      }
+    }, 320);
+  };
+
+  // ---------- queues ----------
+  curQueue() { return this.state.queues.find(q => q.id === this.state.detailId); }
+  openQueue(id) { this.setState({ detailId: id, view: 'detail' }); }
+  joinQueue = () => {
+    this.setState(s => ({ queues: s.queues.map(q => q.id === s.detailId ? { ...q, students: [...q.students, { id: Date.now(), name: 'Вы', me: true }] } : q) }));
+    this.showToast('Вы записались в очередь');
+  };
+  leaveQueue = () => {
+    this.setState(s => ({ queues: s.queues.map(q => q.id === s.detailId ? { ...q, students: q.students.filter(st => !st.me) } : q) }));
+    this.showToast('Вы вышли из очереди');
+  };
+  closeQueue = () => {
+    this.setState(s => ({ queues: s.queues.map(q => q.id === s.detailId ? { ...q, status: 'closed' } : q) }));
+    this.showToast('Очередь закрыта');
+  };
+  moveStudent(idx, dir) {
+    this.setState(s => ({ queues: s.queues.map(q => {
+      if (q.id !== s.detailId) return q;
+      const arr = [...q.students]; const j = idx + dir;
+      if (j < 0 || j >= arr.length) return q;
+      [arr[idx], arr[j]] = [arr[j], arr[idx]];
+      return { ...q, students: arr };
+    }) }));
+  }
+  removeStudent(idx) {
+    this.setState(s => ({ queues: s.queues.map(q => q.id === s.detailId ? { ...q, students: q.students.filter((_, i) => i !== idx) } : q) }));
+  }
+
+  // create
+  submitQueue = () => {
+    const f = this.state.form;
+    if (!f.title.trim()) { this.showToast('Укажите название очереди'); return; }
+    const id = Date.now();
+    const nq = { id, title: f.title, discipline: f.discipline || '—', qtype: f.qtype, teacher: 'Иванов И.И.', room: f.room || '—', group: f.group, when: f.datetime || 'не указано', max: parseInt(f.max) || 15, status: 'open', comment: f.comment, students: [] };
+    this.setState(s => ({ queues: [nq, ...s.queues], creating: false, detailId: id, view: 'detail', form: { title: '', discipline: '', group: 'БПИ2403', room: '', datetime: '', qtype: 'Лабораторная', max: '15', comment: '' } }));
+    this.showToast('Очередь создана');
+  };
+  setForm(k, v) { this.setState(s => ({ form: { ...s.form, [k]: v } })); }
+
+  renderVals() {
+    const E = React.createElement;
+    const st = this.state;
+    const role = st.role;
+    const isStudent = role === 'student', isTeacher = role === 'teacher', isAdmin = role === 'admin';
+    const isMobile = st.device === 'mobile', isDesktop = !isMobile;
+    const v = st.view;
+
+    const roleMeta = {
+      student: { name: 'Соколов Артём', initials: 'СА', label: 'Студент', avatar: '#4F46E5', affil: 'Группа БПИ2403', affilLabel: 'Группа', tg: 'artem_sokolov', icon: 'grad' },
+      teacher: { name: 'Иванов И. И.', initials: 'ИИ', label: 'Преподаватель', avatar: '#0E9F6E', affil: 'Кафедра программной инженерии', affilLabel: 'Кафедра', tg: 'ivanov_teach', icon: 'book' },
+      admin: { name: 'Петрова А. С.', initials: 'ПА', label: 'Администратор', avatar: '#7C3AED', affil: 'Модератор базы знаний', affilLabel: 'Подразделение', tg: 'admin_petrova', icon: 'shield' },
+    };
+    const rm = roleMeta[role] || roleMeta.student;
+
+    // nav
+    const navDefs = [
+      { key: 'dashboard', label: 'Главная', icon: 'home' },
+      { key: 'kb', label: 'База знаний', icon: 'book' },
+      { key: 'upload', label: 'Загрузка', icon: 'upload' },
+      { key: 'queues', label: 'Очереди', icon: 'queues', badge: String(st.queues.filter(q => q.status !== 'closed').length) },
+      { key: 'profile', label: 'Профиль', icon: 'user' },
+    ];
+    const activeView = (v === 'detail') ? 'queues' : v;
+    const nav = navDefs.map(n => ({
+      label: n.label, badge: n.badge,
+      icon: this.icon(n.icon, 19),
+      onClick: () => this.go(n.key),
+      style: {
+        display: 'flex', alignItems: 'center', gap: '11px', width: '100%', border: 'none', cursor: 'pointer',
+        padding: '10px 11px', borderRadius: '11px', fontSize: '14px', fontWeight: activeView === n.key ? 600 : 500,
+        background: activeView === n.key ? '#EEF0FE' : 'transparent', color: activeView === n.key ? '#4F46E5' : '#5B5E6E', textAlign: 'left',
+      },
+    }));
+
+    const bottomDefs = [
+      { key: 'dashboard', label: 'Главная', icon: 'home' },
+      { key: 'kb', label: 'Поиск', icon: 'search' },
+      { key: 'queues', label: 'Очереди', icon: 'queues' },
+      { key: 'profile', label: 'Профиль', icon: 'user' },
+    ];
+    const bottomNav = bottomDefs.map(n => {
+      const on = activeView === n.key;
+      return { label: n.label, onClick: () => this.go(n.key), color: on ? '#4F46E5' : '#9A9DAC', weight: on ? 600 : 500, icon: this.icon(n.icon, 22) };
+    });
+
+    const pageTitles = { dashboard: 'Главная', kb: 'База знаний', upload: 'Загрузка документов', queues: 'Очереди', detail: 'Очередь', profile: 'Профиль' };
+
+    // docs view-model
+    const docVM = (d) => {
+      const c = this.statusChip(d.status);
+      return { ...d, badgeStyle: this.docBadge(d.type), statusLabel: c.label, statusStyle: c.style, frags: d.frags ? (d.frags + ' фрагментов') : 'не проиндексирован', fragsNum: d.frags || '—' };
+    };
+    const docs = st.docs.map(docVM);
+    const recentDocs = docs.slice(0, 4);
+
+    // queues view-model
+    const queueVM = (q) => {
+      const c = this.statusChip(q.status);
+      const myPos = (() => { const i = q.students.findIndex(s => s.me); return i >= 0 ? i + 1 : null; })();
+      const ic = this.qIcon(q.qtype);
+      const wrap = { width: '40px', height: '40px', borderRadius: '11px', background: '#EEF0FE', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' };
+      return {
+        ...q, count: q.students.length, statusLabel: c.label, statusStyle: c.style, myPos,
+        typeIcon: this.icon(ic, 20), typeIconWrap: wrap,
+        open: () => this.openQueue(q.id),
+      };
+    };
+    const queuesVM = st.queues.map(queueVM);
+    const studentQueues = queuesVM.filter(q => q.group === 'БПИ2403');
+    const teacherQueues = queuesVM.filter(q => q.status !== 'closed').slice(0, 3);
+
+    // queue filters
+    const filterDefs = [{ k: 'all', l: 'Все' }, { k: 'live', l: 'Идут сейчас' }, { k: 'open', l: 'Открытые' }, { k: 'closed', l: 'Закрытые' }];
+    const chipStyle = (on) => ({ background: on ? '#4F46E5' : '#fff', color: on ? '#fff' : '#5B5E6E', border: '1px solid ' + (on ? '#4F46E5' : '#E7E9F1'), borderRadius: '999px', padding: '8px 15px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' });
+    const queueFilters = filterDefs.map(f => ({ label: f.l, onClick: () => this.setState({ qFilter: f.k }), style: chipStyle(st.qFilter === f.k) }));
+    let filteredQueues = queuesVM;
+    if (st.qFilter !== 'all') filteredQueues = queuesVM.filter(q => q.status === st.qFilter);
+
+    // kb filters
+    const kbDefs = [{ k: 'all', l: 'Все' }, { k: 'PDF', l: 'PDF' }, { k: 'DOCX', l: 'DOCX' }, { k: 'date', l: 'По дате' }, { k: 'cat', l: 'Категория' }];
+    const kbFilters = kbDefs.map(f => ({ label: f.l, onClick: () => { if (f.k === 'all' || f.k === 'PDF' || f.k === 'DOCX') this.setState({ kbType: f.k }); }, style: chipStyle((f.k === st.kbType) || (f.k === 'all' && st.kbType === 'all')) }));
+
+    // search results
+    const allResults = this.results().map(r => {
+      const relPct = Math.round(r.rel * 100);
+      const relColor = relPct >= 90 ? '#16A34A' : relPct >= 75 ? '#B45309' : '#8A8D9C';
+      return { ...r, badgeStyle: this.docBadge(r.type), snippet: this.highlight(r.text), relLabel: relPct + '%', relColor };
+    });
+    const pageSize = 4;
+    const totalPages = Math.ceil(allResults.length / pageSize);
+    const pagedResults = allResults.slice((st.page - 1) * pageSize, st.page * pageSize);
+    const pages = Array.from({ length: totalPages }, (_, i) => ({ label: String(i + 1), onClick: () => this.setState({ page: i + 1 }), style: { width: '36px', height: '36px', borderRadius: '10px', border: '1px solid ' + (st.page === i + 1 ? '#4F46E5' : '#E7E9F1'), background: st.page === i + 1 ? '#4F46E5' : '#fff', color: st.page === i + 1 ? '#fff' : '#5B5E6E', fontWeight: 600, fontSize: '13px', cursor: 'pointer' } }));
+
+    // detail
+    const cq = this.curQueue();
+    let detail = null;
+    if (cq) {
+      const c = this.statusChip(cq.status);
+      const myPos = (() => { const i = cq.students.findIndex(s => s.me); return i >= 0 ? i + 1 : null; })();
+      const manage = isTeacher && cq.status !== 'closed';
+      const ic = this.qIcon(cq.qtype);
+      detail = {
+        ...cq, count: cq.students.length, statusLabel: c.label, statusStyle: c.style, myPos,
+        typeIcon: this.icon(ic, 24),
+        typeIconWrapLg: { width: '52px', height: '52px', borderRadius: '14px', background: '#EEF0FE', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' },
+        canJoin: isStudent && !myPos && cq.status !== 'closed',
+        noStudents: cq.students.length === 0,
+        students: cq.students.map((s, i) => ({
+          name: s.name, pos: i + 1, tagText: s.me ? 'это вы' : '',
+          numBg: s.me ? '#16A34A' : '#EEF0FE', numColor: s.me ? '#fff' : '#4F46E5',
+          rowStyle: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 15px', borderBottom: i < cq.students.length - 1 ? '1px solid #F1F2F8' : 'none', background: s.me ? '#F7FBF8' : '#fff' },
+          up: () => this.moveStudent(i, -1), down: () => this.moveStudent(i, 1), remove: () => this.removeStudent(i),
+          upStyle: { background: 'none', border: '1px solid #EBEDF4', color: i === 0 ? '#D5D7E2' : '#6B6E80', width: '32px', height: '32px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+          downStyle: { background: 'none', border: '1px solid #EBEDF4', color: i === cq.students.length - 1 ? '#D5D7E2' : '#6B6E80', width: '32px', height: '32px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+        })),
+      };
+    }
+
+    // lessons (teacher)
+    const lessons = [
+      { time: '12:20', room: 'А-402', discipline: 'Программная инженерия', group: 'БПИ2403', kind: 'Лабораторная' },
+      { time: '14:00', room: 'Б-215', discipline: 'Базы данных', group: 'БВТ2401', kind: 'Лекция' },
+    ].map(l => ({ ...l, create: () => { this.setState({ creating: true, form: { ...st.form, title: '', discipline: l.discipline, group: l.group, room: l.room, datetime: '28.06 · ' + l.time, qtype: 'Лабораторная', max: '15', comment: '' } }); } }));
+
+    // chart
+    const vals = [62, 88, 74, 95, 120, 80, 134];
+    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const maxV = Math.max(...vals);
+    const chartBars = vals.map((val, i) => ({ label: days[i], barStyle: { width: '100%', height: Math.round((val / maxV) * 88) + 'px', borderRadius: '6px 6px 3px 3px', background: i === vals.length - 1 ? 'linear-gradient(#7C4DFF,#4F46E5)' : '#E2E0FB' } }));
+
+    // history
+    const history = st.history.map(h => ({ text: h, onClick: () => this.doSearch(h) }));
+
+    // login roles
+    const lr = (key, icon, title, sub, bg) => ({
+      title, sub, icon: this.icon(icon, 20), onClick: () => this.setState({ role: key, view: 'dashboard' }),
+      iconWrap: { width: '42px', height: '42px', borderRadius: '12px', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' },
+    });
+    const loginRoles = [
+      lr('student', 'grad', 'Войти как студент', 'Очереди, поиск, документы', '#4F46E5'),
+      lr('teacher', 'book', 'Войти как преподаватель', 'Создание очередей и dashboard', '#0E9F6E'),
+      lr('admin', 'shield', 'Войти как администратор', 'Статистика и модерация базы', '#7C3AED'),
+    ];
+
+    // uploads vm
+    const uploads = st.uploads.map(u => {
+      const c = this.statusChip(u.status);
+      const col = u.status === 'indexing' ? '#B45309' : u.status === 'done' ? '#16A34A' : '#4F46E5';
+      return { ...u, badgeStyle: this.docBadge(u.type), statusLabel: c.label, statusStyle: c.style, barStyle: { height: '100%', width: Math.min(100, Math.round(u.progress)) + '%', background: col, borderRadius: '999px', transition: 'width .3s' } };
+    });
+
+    // create modal styles
+    const lblStyle = { display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#5B5E6E', marginBottom: '6px' };
+    const inputStyle = { width: '100%', border: '1px solid #E3E5EE', borderRadius: '11px', padding: '11px 13px', fontSize: '14px', background: '#FAFBFE', color: '#15161F' };
+    const typeOpts = ['Лабораторная', 'Консультация', 'Защита', 'Пересдача'];
+    const typeOptions = typeOpts.map(t => ({ label: t, onClick: () => this.setForm('qtype', t), style: { background: st.form.qtype === t ? '#4F46E5' : '#fff', color: st.form.qtype === t ? '#fff' : '#5B5E6E', border: '1px solid ' + (st.form.qtype === t ? '#4F46E5' : '#E3E5EE'), borderRadius: '10px', padding: '9px 14px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' } }));
+
+    // notif prefs
+    const notifDefs = [{ k: 'queue', l: 'Изменения в моих очередях' }, { k: 'search', l: 'Новые документы по подпискам' }, { k: 'schedule', l: 'Напоминания о парах' }];
+    const notifPrefs = notifDefs.map(n => {
+      const on = st.notif[n.k];
+      return { label: n.l, toggle: () => this.setState(s => ({ notif: { ...s.notif, [n.k]: !s.notif[n.k] } })),
+        trackStyle: { width: '40px', height: '23px', borderRadius: '999px', background: on ? '#4F46E5' : '#D5D7E2', position: 'relative', transition: '.15s', flex: '0 0 auto' },
+        knobStyle: { width: '17px', height: '17px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: on ? '20px' : '3px', transition: '.15s', boxShadow: '0 1px 2px rgba(0,0,0,.2)' } };
+    });
+
+    // shell styles
+    const shellStyle = isMobile
+      ? { minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: '#E2E4EE', padding: '24px 16px' }
+      : { display: 'flex', minHeight: '100vh', background: '#F5F6FB' };
+    const mainStyle = isMobile
+      ? { width: '402px', maxWidth: '100%', height: '816px', background: '#F5F6FB', borderRadius: '30px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 30px 80px -30px rgba(20,22,40,.5)', border: '7px solid #14151D' }
+      : { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' };
+    const contentStyle = isMobile
+      ? { flex: 1, overflow: 'auto', padding: '16px 14px 20px' }
+      : { padding: '26px 30px 60px', flex: 1 };
+
+    const twoColGrid = isMobile ? '1fr' : 'minmax(0,1.5fr) minmax(0,1fr)';
+    const queueGrid = isMobile ? '1fr' : 'repeat(auto-fill,minmax(280px,1fr))';
+    const profileGrid = isMobile ? '1fr' : '1fr 1fr';
+
+    const heroStyle = { flex: '1 1 200px', minHeight: '120px', background: 'linear-gradient(145deg,#4F46E5,#7C4DFF)', color: '#fff', borderRadius: '18px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '6px' };
+    const statCardStyle = { flex: '1 1 150px', background: '#fff', border: '1px solid #E7E9F1', borderRadius: '18px', padding: '18px' };
+
+    const deskBtnStyle = { background: isDesktop ? '#4F46E5' : 'transparent', color: isDesktop ? '#fff' : '#6B6E80', border: 'none', borderRadius: '999px', padding: '7px 14px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' };
+    const mobBtnStyle = { background: isMobile ? '#4F46E5' : 'transparent', color: isMobile ? '#fff' : '#6B6E80', border: 'none', borderRadius: '999px', padding: '7px 14px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' };
+
+    return {
+      loggedIn: !!role, showLogin: !role,
+      isStudent, isTeacher, isAdmin, isMobile, isDesktop,
+      vDash: v === 'dashboard', vKb: v === 'kb', vUpload: v === 'upload', vQueues: v === 'queues', vDetail: v === 'detail', vProfile: v === 'profile',
+      role, roleLabel: rm.label, userName: rm.name, userInitials: rm.initials, avatarBg: rm.avatar, tgId: rm.tg,
+      profileAffil: rm.affil, profileAffilLabel: rm.affilLabel,
+      roleBadgeStyle: { background: '#EEF0FE', color: '#4F46E5', fontSize: '12px', fontWeight: 600, padding: '3px 11px', borderRadius: '999px' },
+      pageTitle: pageTitles[v] || 'Кампус',
+      nav, bottomNav,
+      // icons
+      logoIcon: this.icon('book', 20), chev: this.icon('chev', 18), logoutIcon: this.icon('logout', 18), bellIcon: this.icon('bell', 19),
+      gradIcon: this.icon('grad', 20), bookIcon: this.icon('book', 20), shieldIcon: this.icon('shield', 20),
+      loginStudent: () => this.setState({ role: 'student', view: 'dashboard' }),
+      loginTeacher: () => this.setState({ role: 'teacher', view: 'dashboard' }),
+      loginAdmin: () => this.setState({ role: 'admin', view: 'dashboard' }),
+      searchIconSm: this.icon('search', 17), searchBigIcon: this.icon('search', 26), uploadBigIcon: this.icon('upload', 28),
+      plusIcon: this.icon('plus', 16), checkIcon: this.icon('check', 16), xIcon: this.icon('x', 18), clockIconSm: this.icon('clock', 14),
+      pinIcon: this.icon('pin', 15), calIcon: this.icon('cal', 15), usersIcon: this.icon('users', 15), userIconSm: this.icon('user', 15),
+      alertIcon: this.icon('alert', 18), trashIcon: this.icon('trash', 16), arrowUpIcon: this.icon('arrowUp', 16), arrowDownIcon: this.icon('arrowDown', 16),
+      linkIcon: this.icon('link', 22),
+      // handlers
+      setDesktop: () => this.setState({ device: 'desktop' }), setMobile: () => this.setState({ device: 'mobile' }),
+      deskBtnStyle, mobBtnStyle,
+      logout: () => this.setState({ role: null, view: 'dashboard' }),
+      goKb: () => this.go('kb'), goQueues: () => this.go('queues'), goProfile: () => this.go('profile'),
+      query: st.query, activeQuery: st.activeQuery,
+      onQueryInput: (e) => this.setState({ query: e.target.value }),
+      onSearchKey: (e) => { if (e.key === 'Enter') this.doSearch(); },
+      runSearch: () => this.doSearch(),
+      history,
+      // data
+      docs, recentDocs, queuesVM, studentQueues, teacherQueues, filteredQueues, lessons, chartBars,
+      noQueues: filteredQueues.length === 0,
+      queueFilters, kbFilters,
+      // kb
+      hasResults: st.searched && allResults.length > 0,
+      showEmpty: st.searched && allResults.length === 0,
+      showHistoryRow: !st.searched,
+      resultCount: allResults.length, pagedResults, pages,
+      showPagination: totalPages > 1,
+      // detail
+      detail, teacherCanManage: detail ? (isTeacher && detail.status !== 'closed') : false,
+      joinQueue: this.joinQueue, leaveQueue: this.leaveQueue, closeQueue: this.closeQueue,
+      // upload
+      uploads, hasUploads: uploads.length > 0, simulateUpload: this.simulateUpload,
+      dropBorder: '#CBC9F0', dropBg: '#FBFAFF',
+      // create modal
+      creating: st.creating, openCreate: () => this.setState({ creating: true }),
+      closeCreate: () => this.setState({ creating: false }), stop: (e) => e.stopPropagation(),
+      form: st.form, lblStyle, inputStyle, typeOptions,
+      formTitle: (e) => this.setForm('title', e.target.value), formDiscipline: (e) => this.setForm('discipline', e.target.value),
+      formGroup: (e) => this.setForm('group', e.target.value), formRoom: (e) => this.setForm('room', e.target.value),
+      formDatetime: (e) => this.setForm('datetime', e.target.value), formMax: (e) => this.setForm('max', e.target.value),
+      formComment: (e) => this.setForm('comment', e.target.value),
+      submitQueue: this.submitQueue,
+      // profile
+      notifPrefs, toastIntegration: () => this.showToast('Демо: интеграция МТУСИ/TECH будет доступна позже'),
+      // layout
+      shellStyle, mainStyle, contentStyle, twoColGrid, queueGrid, profileGrid, heroStyle, statCardStyle,
+      // toast
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>
