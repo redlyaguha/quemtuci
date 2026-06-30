@@ -18,6 +18,7 @@ FIXTURE_FILES = (
     "fancy.docx",
 )
 
+
 @pytest.fixture(autouse=True)
 def mock_es_lifespan():
     """Перехватывает ensure_index при старте приложения в каждом тесте."""
@@ -27,6 +28,7 @@ def mock_es_lifespan():
     ):
         yield
 
+
 @pytest.fixture(scope="session")
 def fixtures_dir():
     """Путь к папке с тестовыми файлами."""
@@ -35,6 +37,7 @@ def fixtures_dir():
     if missing:
         pytest.fail(f"Не найдены тестовые фикстуры: {', '.join(missing)}")
     return path
+
 
 @pytest.fixture
 def sample_files(fixtures_dir):
@@ -49,4 +52,3 @@ def sample_files(fixtures_dir):
         "fancy_pdf": fixtures_dir / "fancy.pdf",
         "fancy_docx": fixtures_dir / "fancy.docx",
     }
-
