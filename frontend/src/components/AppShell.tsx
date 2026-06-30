@@ -1,15 +1,30 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation, matchPath } from "react-router-dom";
 import type { CSSProperties } from "react";
 import { Icon, type IconName } from "./Icon";
 import { useAuth } from "../hooks/useAuth";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useTelegram } from "../hooks/useTelegram";
 import { ROUTES } from "../routes";
 import { colors, font, radii, roleMeta } from "../theme";
 
 /**
- * Каркас приложения: боковое меню (десктоп) и нижняя навигация (мобайл).
- * Базовая версия — [FE-01]. Полировка адаптива/Telegram — [FE-08].
+ * Каркас приложения: боковое меню (десктоп), мобильная шапка и нижняя
+ * навигация (мобайл). Адаптив 320–1920px и Telegram Mini App — [FE-08].
  */
+
+/** Заголовок страницы по текущему пути (для мобильной шапки). */
+const PAGE_TITLES: { pattern: string; title: string }[] = [
+  { pattern: ROUTES.dashboard, title: "Главная" },
+  { pattern: ROUTES.knowledge, title: "База знаний" },
+  { pattern: ROUTES.upload, title: "Загрузка документов" },
+  { pattern: ROUTES.queueDetail(), title: "Очередь" },
+  { pattern: ROUTES.queues, title: "Очереди" },
+  { pattern: ROUTES.profile, title: "Профиль" },
+];
+
+function pageTitle(pathname: string): string {
+  return PAGE_TITLES.find((p) => matchPath(p.pattern, pathname))?.title ?? "Кампус";
+}
 
 interface NavItem {
   to: string;
@@ -47,6 +62,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isDesktop = useMediaQuery("(min-width: 880px)");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  useTelegram(); // инициализация Telegram Mini App, если открыто внутри Telegram
 
   const onLogout = () => {
     logout();
@@ -54,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const rm = user ? roleMeta[user.role] : null;
+  const title = pageTitle(location.pathname);
 
   return (
     <div
@@ -176,8 +194,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {!isDesktop && (
+          <header
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 16px",
+              borderBottom: `1px solid ${colors.borderMuted}`,
+              background: colors.surface,
+              position: "sticky",
+              top: 0,
+              zIndex: 20,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: colors.gradient, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                <Icon name="book" size={18} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
+            </div>
+            {user && (
+              <button
+                onClick={() => navigate(ROUTES.profile)}
+                title="Профиль"
+                style={{ width: 34, height: 34, borderRadius: "50%", background: rm?.color ?? colors.primary, color: "#fff", border: "none", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+              >
+                {initials(user.name)}
+              </button>
+            )}
+          </header>
+        )}
+
         <main style={{ padding: isDesktop ? "26px 30px 60px" : "16px 14px 84px", flex: 1 }}>
-          {children}
+          {/* Ограничение ширины контента на сверхшироких экранах (до 1920px) */}
+          <div style={{ width: "100%", maxWidth: 1400, margin: "0 auto" }}>{children}</div>
         </main>
 
         {!isDesktop && (
