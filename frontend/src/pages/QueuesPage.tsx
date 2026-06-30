@@ -5,7 +5,7 @@ import { StatusChip } from "../components/StatusChip";
 import { CreateQueueModal } from "../components/CreateQueueModal";
 import { useAuth } from "../hooks/useAuth";
 import { queuesApi } from "../api";
-import { MOCK_QUEUES } from "../data/mock";
+import { localQueues } from "../data/localStore";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
 import type { Queue, QueueStatus } from "../types";
@@ -26,7 +26,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 export default function QueuesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [queues, setQueues] = useState<Queue[]>(MOCK_QUEUES);
+  const [queues, setQueues] = useState<Queue[]>(localQueues.list());
   const [filter, setFilter] = useState<Filter>("all");
   const [creating, setCreating] = useState(false);
 
@@ -128,6 +128,7 @@ export default function QueuesPage() {
           onClose={() => setCreating(false)}
           onCreated={(q) => {
             setCreating(false);
+            localQueues.add(q);
             setQueues((list) => [q, ...list]);
             navigate(ROUTES.queueDetail(q.id));
           }}

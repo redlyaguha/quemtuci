@@ -5,7 +5,7 @@ import { StatusChip } from "../components/StatusChip";
 import { Toast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
 import { queuesApi } from "../api";
-import { MOCK_QUEUES } from "../data/mock";
+import { localQueues } from "../data/localStore";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
 import type { Queue, QueueMember } from "../types";
@@ -27,14 +27,14 @@ export default function QueueDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
+    if (id === undefined) return;
     let alive = true;
     const fallback = () => {
-      const local = MOCK_QUEUES.find((q) => String(q.id) === String(id));
+      const local = localQueues.get(id);
       if (!alive) return;
       if (local) setQueue(local);
       else setNotFound(true);
     };
-    if (id === undefined) return;
     queuesApi
       .get(id)
       .then((q) => alive && setQueue(q))
@@ -68,6 +68,7 @@ export default function QueueDetailPage() {
   /** Оптимистичное обновление + фоновый вызов API (ошибки backend игнорируем). */
   const mutate = (next: Queue, apiCall: () => Promise<unknown>, message?: string) => {
     setQueue(next);
+    localQueues.update(next); // согласованность при возврате к списку в демо-режиме
     if (message) setToast(message);
     apiCall().catch(() => {/* backend не готов — локального обновления достаточно */});
   };
