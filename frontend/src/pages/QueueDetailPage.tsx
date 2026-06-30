@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Icon, queueTypeIcon } from "../components/Icon";
 import { StatusChip } from "../components/StatusChip";
 import { Toast } from "../components/Toast";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useAuth } from "../hooks/useAuth";
 import { queuesApi } from "../api";
 import { localQueues } from "../data/localStore";
@@ -25,6 +26,9 @@ export default function QueueDetailPage() {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [passingMember, setPassingMember] = useState<QueueMember | null>(null);
+  const [pendingGrade, setPendingGrade] = useState<number | null>(null);
 
   useEffect(() => {
     if (id === undefined) return;
@@ -60,12 +64,20 @@ export default function QueueDetailPage() {
 
   // «Это я» — по идентификатору текущего пользователя, а не по хранимому флагу.
   const isMe = (s: QueueMember) => user != null && s.userId != null && s.userId === user.id;
-  const myIndex = queue.students.findIndex(isMe);
-  const myPos = myIndex >= 0 ? myIndex + 1 : null;
+
+  // Активные (в очереди) и сдавшие. Сдавшие — внизу, серым, с зафиксированным номером.
+  const activeStudents = queue.students.filter((s) => !s.passed);
+  const doneStudents = queue.students
+    .filter((s) => s.passed)
+    .sort((a, b) => (a.passedPosition ?? 0) - (b.passedPosition ?? 0));
+
+  const myActiveIndex = activeStudents.findIndex(isMe);
+  const myPos = myActiveIndex >= 0 ? myActiveIndex + 1 : null;
+  const iAmInQueue = queue.students.some(isMe);
   const isStudent = user?.role === "student";
   const isTeacher = user?.role === "teacher";
   const canManage = isTeacher && queue.status !== "closed";
-  const canJoin = isStudent && myPos === null && queue.status !== "closed";
+  const canJoin = isStudent && !iAmInQueue && queue.status !== "closed";
 
   /** Оптимистичное обновление + фоновый вызов API (ошибки backend игнорируем). */
   const mutate = (next: Queue, apiCall: () => Promise<unknown>, message?: string) => {
@@ -85,9 +97,10 @@ export default function QueueDetailPage() {
     mutate({ ...queue, students: queue.students.filter((s) => !isMe(s)) }, () => queuesApi.leave(queue.id), "Вы вышли из очереди");
   };
 
+  // Перестановка работает в пределах активных (они идут первыми в массиве).
   const move = (index: number, dir: -1 | 1) => {
     const j = index + dir;
-    if (j < 0 || j >= queue.students.length) return;
+    if (j < 0 || j >= activeStudents.length) return;
     const students = [...queue.students];
     [students[index], students[j]] = [students[j], students[index]];
     mutate({ ...queue, students }, () => queuesApi.reorder(queue.id, students.map((s) => s.id)));
@@ -97,7 +110,20 @@ export default function QueueDetailPage() {
     mutate({ ...queue, students: queue.students.filter((s) => s.id !== member.id) }, () => queuesApi.removeMember(queue.id, member.id));
   };
 
+  /** Отметить активного студента сдавшим: фиксируем номер, ставим в конец списка серым. */
+  const markPassed = (member: QueueMember, grade: number | null) => {
+    const passedPosition = activeStudents.findIndex((s) => s.id === member.id) + 1;
+    const updated: QueueMember = { ...member, passed: true, grade, passedPosition };
+    const others = queue.students.filter((s) => s.id !== member.id);
+    mutate(
+      { ...queue, students: [...others, updated] },
+      () => queuesApi.completeMember(queue.id, member.id, grade),
+      grade != null ? `Отмечено: сдал, оценка ${grade}` : "Отмечено: сдал без оценки"
+    );
+  };
+
   const close = () => {
+    setConfirmClose(false);
     mutate({ ...queue, status: "closed" }, () => queuesApi.close(queue.id), "Очередь закрыта");
   };
 
@@ -159,7 +185,7 @@ export default function QueueDetailPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 11 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Список студентов · {queue.students.length}</h3>
         {canManage && (
-          <button onClick={close} style={{ background: colors.dangerSoft, color: colors.danger, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={() => setConfirmClose(true)} style={{ background: colors.dangerSoft, color: colors.danger, border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Закрыть очередь
           </button>
         )}
@@ -169,30 +195,98 @@ export default function QueueDetailPage() {
         {queue.students.length === 0 ? (
           <div style={{ padding: 34, textAlign: "center", color: colors.textFaint, fontSize: 13.5 }}>Пока никто не записался в очередь</div>
         ) : (
-          queue.students.map((s, i) => {
-            const mine = isMe(s);
-            return (
-            <div
-              key={s.id}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: i < queue.students.length - 1 ? `1px solid ${colors.borderMuted}` : "none", background: mine ? "#F7FBF8" : colors.surface }}
-            >
-              <div style={{ width: 30, height: 30, borderRadius: 9, background: mine ? colors.success : colors.primarySoft, color: mine ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</div>
-                {mine && <div style={{ fontSize: 11.5, color: colors.textFaint }}>это вы</div>}
-              </div>
-              {canManage && (
-                <div style={{ display: "flex", gap: 4 }}>
-                  <IconBtn name="arrowUp" title="Вверх" disabled={i === 0} onClick={() => move(i, -1)} />
-                  <IconBtn name="arrowDown" title="Вниз" disabled={i === queue.students.length - 1} onClick={() => move(i, 1)} />
-                  <IconBtn name="trash" title="Удалить" danger onClick={() => removeMember(s)} />
+          <>
+            {/* Активные — в очереди */}
+            {activeStudents.map((s, i) => {
+              const mine = isMe(s);
+              const last = i === activeStudents.length - 1 && doneStudents.length === 0;
+              return (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: last ? "none" : `1px solid ${colors.borderMuted}`, background: mine ? "#F7FBF8" : colors.surface }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 9, background: mine ? colors.success : colors.primarySoft, color: mine ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</div>
+                    {mine && <div style={{ fontSize: 11.5, color: colors.textFaint }}>это вы</div>}
+                  </div>
+                  {canManage && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => { setPendingGrade(null); setPassingMember(s); }}
+                        title="Отметить сдавшим"
+                        style={{ background: colors.successSoft, border: "1px solid #CDEFD9", color: "#15803D", height: 32, borderRadius: 9, padding: "0 10px", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12.5, fontWeight: 600 }}
+                      >
+                        <Icon name="check" size={15} />
+                        Сдал
+                      </button>
+                      <IconBtn name="arrowUp" title="Вверх" disabled={i === 0} onClick={() => move(i, -1)} />
+                      <IconBtn name="arrowDown" title="Вниз" disabled={i === activeStudents.length - 1} onClick={() => move(i, 1)} />
+                      <IconBtn name="trash" title="Удалить" danger onClick={() => removeMember(s)} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            );
-          })
+              );
+            })}
+
+            {/* Сдавшие — серым, внизу, с зафиксированным номером и оценкой */}
+            {doneStudents.map((s, i) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: i < doneStudents.length - 1 ? `1px solid ${colors.borderMuted}` : "none", background: "#FAFBFC" }}>
+                <div style={{ width: 30, height: 30, borderRadius: 9, background: "#EDEEF3", color: colors.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{s.passedPosition ?? "—"}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, textDecoration: "line-through" }}>{s.name}</div>
+                  <div style={{ fontSize: 11.5, color: colors.textFaint }}>сдал{isMe(s) ? " · это вы" : ""}</div>
+                </div>
+                <span style={{ fontSize: 12.5, fontWeight: 600, padding: "4px 11px", borderRadius: 999, whiteSpace: "nowrap", background: s.grade != null ? colors.primarySoft : "#F1F2F8", color: s.grade != null ? colors.primary : colors.textMuted }}>
+                  {s.grade != null ? `Оценка: ${s.grade}` : "Без оценки"}
+                </span>
+              </div>
+            ))}
+          </>
         )}
       </div>
+
+      {confirmClose && (
+        <ConfirmDialog
+          title="Закрыть очередь?"
+          message="После закрытия студенты не смогут записываться, а запись будет недоступна. Действие нельзя отменить."
+          confirmLabel="Закрыть очередь"
+          danger
+          onConfirm={close}
+          onCancel={() => setConfirmClose(false)}
+        />
+      )}
+
+      {passingMember && (
+        <ConfirmDialog
+          title={`Отметить сдавшим: ${passingMember.name}`}
+          message="Выберите оценку за работу или отметьте без оценки. Студент станет серым и опустится вниз списка."
+          confirmLabel="Подтвердить"
+          onConfirm={() => {
+            markPassed(passingMember, pendingGrade);
+            setPassingMember(null);
+          }}
+          onCancel={() => setPassingMember(null)}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 14 }}>
+            {[5, 4, 3, 2].map((g) => {
+              const on = pendingGrade === g;
+              return (
+                <button
+                  key={g}
+                  onClick={() => setPendingGrade(g)}
+                  style={{ width: 44, height: 44, borderRadius: 11, border: `1px solid ${on ? colors.primary : colors.border}`, background: on ? colors.primary : colors.surface, color: on ? "#fff" : colors.textSoft, fontWeight: 700, fontSize: 16, cursor: "pointer" }}
+                >
+                  {g}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPendingGrade(null)}
+              style={{ height: 44, padding: "0 16px", borderRadius: 11, border: `1px solid ${pendingGrade === null ? colors.primary : colors.border}`, background: pendingGrade === null ? colors.primarySoft : colors.surface, color: pendingGrade === null ? colors.primary : colors.textSoft, fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
+            >
+              Без оценки
+            </button>
+          </div>
+        </ConfirmDialog>
+      )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>

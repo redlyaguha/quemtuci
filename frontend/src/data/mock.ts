@@ -6,10 +6,10 @@
 import type { DocumentItem, Queue, SearchResult } from "../types";
 
 export const MOCK_DOCUMENTS: DocumentItem[] = [
-  { id: 1, name: "Методические указания по программной инженерии.pdf", type: "PDF", date: "12.06.2026", size: "2.4 МБ", frags: 128, status: "done" },
-  { id: 2, name: "Правила оформления лабораторных работ.docx", type: "DOCX", date: "09.06.2026", size: "540 КБ", frags: 64, status: "done" },
-  { id: 3, name: "Регламент пересдач.pdf", type: "PDF", date: "03.06.2026", size: "1.1 МБ", frags: 47, status: "done" },
-  { id: 4, name: "Инструкция по работе с электронной средой.docx", type: "DOCX", date: "01.06.2026", size: "820 КБ", frags: 0, status: "error" },
+  { id: 1, name: "Методические указания по программной инженерии.pdf", type: "PDF", date: "12.06.2026", size: "2.4 МБ", frags: 128, status: "done", uploaderName: "Иванов И. И.", uploaderRole: "teacher" },
+  { id: 2, name: "Правила оформления лабораторных работ.docx", type: "DOCX", date: "09.06.2026", size: "540 КБ", frags: 64, status: "done", uploaderName: "Петрова А. С.", uploaderRole: "admin" },
+  { id: 3, name: "Регламент пересдач.pdf", type: "PDF", date: "03.06.2026", size: "1.1 МБ", frags: 47, status: "done", uploaderName: "Иванов И. И.", uploaderRole: "teacher" },
+  { id: 4, name: "Отчёт по практике (черновик).docx", type: "DOCX", date: "01.06.2026", size: "820 КБ", frags: 0, status: "error", uploaderName: "Соколов Артём", uploaderRole: "student", uploaderGroup: "БПИ2403" },
 ];
 
 export const MOCK_QUEUES: Queue[] = [

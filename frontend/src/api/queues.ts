@@ -33,6 +33,12 @@ export const queuesApi = {
   removeMember: (id: string | number, memberId: string | number) =>
     api.delete(`/queues/${id}/members/${memberId}`).then((r) => r.data),
 
+  /** Отметить участника сдавшим, опционально с оценкой. */
+  completeMember: (id: string | number, memberId: string | number, grade: number | null) =>
+    api
+      .patch<Queue>(`/queues/${id}/members/${memberId}/complete`, { grade })
+      .then((r) => r.data),
+
   close: (id: string | number) =>
     api.patch<Queue>(`/queues/${id}/close`).then((r) => r.data),
 };

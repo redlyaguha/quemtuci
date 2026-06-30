@@ -113,6 +113,9 @@ export default function UploadDocumentsPage() {
             frags: 30 + Math.floor(Math.random() * 90),
             status: "done",
             url: item.url,
+            uploaderName: user?.name,
+            uploaderRole: user?.role,
+            uploaderGroup: user?.group ?? undefined,
           });
           setToast("Документ проиндексирован и добавлен в базу");
           return;
@@ -149,7 +152,13 @@ export default function UploadDocumentsPage() {
     try {
       const doc = await documentsApi.upload(file, (percent) => patchUpload(item.id, { progress: percent }));
       patchUpload(item.id, { status: "done", progress: 100 });
-      addDoc({ ...doc, url: doc.url ?? item.url });
+      addDoc({
+        ...doc,
+        url: doc.url ?? item.url,
+        uploaderName: doc.uploaderName ?? user?.name,
+        uploaderRole: doc.uploaderRole ?? user?.role,
+        uploaderGroup: doc.uploaderGroup ?? user?.group ?? undefined,
+      });
       setToast("Документ проиндексирован и добавлен в базу");
     } catch {
       // backend не готов — эмулируем процесс, чтобы экран был проверяем.

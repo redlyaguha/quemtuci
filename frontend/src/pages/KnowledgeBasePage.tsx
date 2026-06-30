@@ -7,7 +7,7 @@ import { Toast } from "../components/Toast";
 import { searchApi } from "../api";
 import { MOCK_CORPUS, SEARCH_HISTORY_SEED } from "../data/mock";
 import { localDocs } from "../data/localDocs";
-import { colors } from "../theme";
+import { colors, roleMeta } from "../theme";
 import type { SearchResult, DocumentType, DocumentItem } from "../types";
 
 /**
@@ -37,6 +37,14 @@ function localSearch(query: string): SearchResult[] {
   }).sort((a, b) => b.rel - a.rel);
 }
 
+/** Строка «кто загрузил · группа · дата» под названием документа. */
+function uploaderLine(d: DocumentItem): string {
+  const role = d.uploaderRole ? roleMeta[d.uploaderRole].label : null;
+  const who = role ? (d.uploaderName ? `${role} (${d.uploaderName})` : role) : null;
+  const parts = [who, d.uploaderGroup, d.date].filter(Boolean);
+  return parts.length ? `Загрузил: ${parts.join(" · ")}` : "Сведения о загрузке недоступны";
+}
+
 function relMeta(rel: number) {
   const pct = Math.round(rel * 100);
   const color = pct >= 90 ? colors.success : pct >= 75 ? colors.warning : colors.textMuted;
@@ -57,6 +65,16 @@ export default function KnowledgeBasePage() {
   const openDoc = (d: DocumentItem) => {
     if (d.url) window.open(d.url, "_blank", "noopener");
     else setToast("Файл доступен после интеграции с хранилищем");
+  };
+
+  /** Сброс поиска — возврат к списку документов (выход из состояния «ничего не найдено»). */
+  const resetSearch = () => {
+    setSearched(false);
+    setResults([]);
+    setActiveQuery("");
+    setQuery("");
+    setPage(1);
+    setSearchParams({}, { replace: true });
   };
 
   const runSearch = async (value: string) => {
@@ -128,6 +146,15 @@ export default function KnowledgeBasePage() {
             placeholder="Искать по содержанию документов…"
             style={{ flex: 1, border: "none", background: "none", padding: "14px 0", fontSize: 15 }}
           />
+          {(query || searched) && (
+            <button
+              onClick={resetSearch}
+              title="Очистить"
+              style={{ background: "none", border: "none", cursor: "pointer", color: colors.textFaint, padding: 6, display: "flex", flex: "0 0 auto" }}
+            >
+              <Icon name="x" size={16} />
+            </button>
+          )}
         </div>
         <button
           onClick={() => submit()}
@@ -195,8 +222,8 @@ export default function KnowledgeBasePage() {
                 <DocBadge type={d.type} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                  <div style={{ fontSize: 11.5, color: colors.textFaint }}>
-                    {d.frags ? `${d.frags} фрагментов` : "не проиндексирован"}
+                  <div style={{ fontSize: 11.5, color: colors.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {uploaderLine(d)}
                   </div>
                 </div>
                 <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, flex: "0 0 auto" }}>Открыть →</span>
@@ -275,6 +302,12 @@ export default function KnowledgeBasePage() {
           <div style={{ fontSize: 14, color: colors.textMuted, marginTop: 6, maxWidth: 360, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55 }}>
             Попробуйте изменить формулировку, убрать лишние слова или использовать синонимы.
           </div>
+          <button
+            onClick={resetSearch}
+            style={{ marginTop: 18, background: colors.primary, color: "#fff", border: "none", borderRadius: 12, padding: "11px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          >
+            Вернуться к документам
+          </button>
         </div>
       )}
 
