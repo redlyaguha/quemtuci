@@ -1,24 +1,44 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AppShell } from "./components/AppShell";
+import { ROUTES } from "./routes";
+
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import KnowledgeBasePage from "./pages/KnowledgeBasePage";
+import UploadDocumentsPage from "./pages/UploadDocumentsPage";
+import QueuesPage from "./pages/QueuesPage";
+import QueueDetailPage from "./pages/QueueDetailPage";
+import ProfilePage from "./pages/ProfilePage";
 
 /**
- * Каркас маршрутизации. Страницы переносятся из HTML-прототипа в рамках
- * issue [FE-01]..[FE-08]. Пока — заглушка.
+ * Маршрутизация приложения — [FE-01].
+ * Публичный маршрут /login и защищённая зона в общем каркасе AppShell.
  */
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Placeholder title="Кампус — каркас" />} />
-      {/* TODO [FE-02]: /login */}
-      {/* TODO [FE-05]: /dashboard */}
-      {/* TODO [FE-04]: /knowledge */}
-      {/* TODO [FE-03]: /upload */}
-      {/* TODO [FE-06]: /queues, /queues/:id */}
-      {/* TODO [FE-07]: /profile */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path={ROUTES.login} element={<LoginPage />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      >
+        <Route path={ROUTES.dashboard} element={<DashboardPage />} />
+        <Route path={ROUTES.knowledge} element={<KnowledgeBasePage />} />
+        <Route path={ROUTES.upload} element={<UploadDocumentsPage />} />
+        <Route path={ROUTES.queues} element={<QueuesPage />} />
+        <Route path={ROUTES.queueDetail()} element={<QueueDetailPage />} />
+        <Route path={ROUTES.profile} element={<ProfilePage />} />
+      </Route>
+
+      <Route path="/" element={<Navigate to={ROUTES.dashboard} replace />} />
+      <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />
     </Routes>
   );
-}
-
-function Placeholder({ title }: { title: string }) {
-  return <h1 style={{ fontFamily: "system-ui", padding: 24 }}>{title}</h1>;
 }
