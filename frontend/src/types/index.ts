@@ -35,6 +35,8 @@ export interface DocumentItem {
   /** Кол-во проиндексированных фрагментов (чанков). */
   frags?: number;
   status: DocumentStatus;
+  /** Ссылка для просмотра файла (object URL для загруженных в этой сессии). */
+  url?: string;
 }
 
 // ---------- Поиск ----------
@@ -63,8 +65,12 @@ export type QueueStatus = "open" | "live" | "closed";
 export interface QueueMember {
   id: number | string;
   name: string;
-  /** Признак «это текущий пользователь» (вычисляется на бэкенде/фронте). */
-  me?: boolean;
+  /**
+   * Идентификатор пользователя, занявшего место. «Это я» вычисляется
+   * сравнением с текущим пользователем, а не хранимым флагом — иначе позиция
+   * ошибочно показывается другим ролям. На бэкенде проставляется по JWT.
+   */
+  userId?: number | string;
 }
 
 export interface Queue {

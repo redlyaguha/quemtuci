@@ -58,7 +58,9 @@ export default function QueueDetailPage() {
     return <div style={{ color: colors.textMuted, padding: "20px 0" }}>Загрузка…</div>;
   }
 
-  const myIndex = queue.students.findIndex((s) => s.me);
+  // «Это я» — по идентификатору текущего пользователя, а не по хранимому флагу.
+  const isMe = (s: QueueMember) => user != null && s.userId != null && s.userId === user.id;
+  const myIndex = queue.students.findIndex(isMe);
   const myPos = myIndex >= 0 ? myIndex + 1 : null;
   const isStudent = user?.role === "student";
   const isTeacher = user?.role === "teacher";
@@ -74,12 +76,13 @@ export default function QueueDetailPage() {
   };
 
   const join = () => {
-    const me: QueueMember = { id: `me-${Date.now()}`, name: user?.name ?? "Вы", me: true };
+    if (!user) return;
+    const me: QueueMember = { id: `me-${Date.now()}`, name: user.name, userId: user.id };
     mutate({ ...queue, students: [...queue.students, me] }, () => queuesApi.join(queue.id), "Вы записались в очередь");
   };
 
   const leave = () => {
-    mutate({ ...queue, students: queue.students.filter((s) => !s.me) }, () => queuesApi.leave(queue.id), "Вы вышли из очереди");
+    mutate({ ...queue, students: queue.students.filter((s) => !isMe(s)) }, () => queuesApi.leave(queue.id), "Вы вышли из очереди");
   };
 
   const move = (index: number, dir: -1 | 1) => {
@@ -166,15 +169,17 @@ export default function QueueDetailPage() {
         {queue.students.length === 0 ? (
           <div style={{ padding: 34, textAlign: "center", color: colors.textFaint, fontSize: 13.5 }}>Пока никто не записался в очередь</div>
         ) : (
-          queue.students.map((s, i) => (
+          queue.students.map((s, i) => {
+            const mine = isMe(s);
+            return (
             <div
               key={s.id}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: i < queue.students.length - 1 ? `1px solid ${colors.borderMuted}` : "none", background: s.me ? "#F7FBF8" : colors.surface }}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: i < queue.students.length - 1 ? `1px solid ${colors.borderMuted}` : "none", background: mine ? "#F7FBF8" : colors.surface }}
             >
-              <div style={{ width: 30, height: 30, borderRadius: 9, background: s.me ? colors.success : colors.primarySoft, color: s.me ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{i + 1}</div>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: mine ? colors.success : colors.primarySoft, color: mine ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</div>
-                {s.me && <div style={{ fontSize: 11.5, color: colors.textFaint }}>это вы</div>}
+                {mine && <div style={{ fontSize: 11.5, color: colors.textFaint }}>это вы</div>}
               </div>
               {canManage && (
                 <div style={{ display: "flex", gap: 4 }}>
@@ -184,7 +189,8 @@ export default function QueueDetailPage() {
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

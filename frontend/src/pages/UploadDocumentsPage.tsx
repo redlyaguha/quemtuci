@@ -3,8 +3,9 @@ import { Icon } from "../components/Icon";
 import { DocBadge } from "../components/DocBadge";
 import { StatusChip } from "../components/StatusChip";
 import { Toast } from "../components/Toast";
+import { useAuth } from "../hooks/useAuth";
 import { documentsApi } from "../api";
-import { MOCK_DOCUMENTS } from "../data/mock";
+import { localDocs } from "../data/localDocs";
 import { colors } from "../theme";
 import type { DocumentItem, DocumentType, DocumentStatus } from "../types";
 
@@ -28,6 +29,8 @@ interface UploadItem {
   size: string;
   progress: number;
   status: DocumentStatus;
+  /** object URL для просмотра загруженного файла. */
+  url?: string;
 }
 
 function fileType(name: string): DocumentType | null {
@@ -46,19 +49,22 @@ const today = () =>
   new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 export default function UploadDocumentsPage() {
-  const [docs, setDocs] = useState<DocumentItem[]>(MOCK_DOCUMENTS);
+  const { user } = useAuth();
+  const canDelete = user?.role === "teacher" || user?.role === "admin";
+
+  const [docs, setDocs] = useState<DocumentItem[]>(localDocs.list());
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Начальный список документов из API (с фолбэком на демо-данные).
+  // Начальный список документов из API (с фолбэком на общий демо-стор).
   useEffect(() => {
     let alive = true;
     documentsApi
       .list()
       .then((d) => alive && setDocs(d))
-      .catch(() => {/* остаёмся на демо-данных */});
+      .catch(() => {/* остаёмся на демо-данных стора */});
     return () => {
       alive = false;
     };
@@ -67,7 +73,23 @@ export default function UploadDocumentsPage() {
   const patchUpload = (id: number, patch: Partial<UploadItem>) =>
     setUploads((list) => list.map((u) => (u.id === id ? { ...u, ...patch } : u)));
 
-  const addDoc = (doc: DocumentItem) => setDocs((list) => [doc, ...list]);
+  const addDoc = (doc: DocumentItem) => {
+    localDocs.add(doc);
+    setDocs((list) => [doc, ...list]);
+  };
+
+  const removeDoc = (doc: DocumentItem) => {
+    documentsApi.remove(doc.id).catch(() => {/* backend не готов — локального удаления достаточно */});
+    localDocs.remove(doc.id);
+    setDocs((list) => list.filter((d) => d.id !== doc.id));
+    if (doc.url) URL.revokeObjectURL(doc.url);
+    setToast("Документ удалён из базы");
+  };
+
+  const openDoc = (doc: DocumentItem) => {
+    if (doc.url) window.open(doc.url, "_blank", "noopener");
+    else setToast("Файл доступен после интеграции с хранилищем");
+  };
 
   /** Клиентская эмуляция: Загрузка → Индексация → Готово. */
   const simulate = (item: UploadItem) => {
@@ -90,6 +112,7 @@ export default function UploadDocumentsPage() {
             size: item.size,
             frags: 30 + Math.floor(Math.random() * 90),
             status: "done",
+            url: item.url,
           });
           setToast("Документ проиндексирован и добавлен в базу");
           return;
@@ -119,13 +142,14 @@ export default function UploadDocumentsPage() {
       size: humanSize(file.size),
       progress: 0,
       status: "uploading",
+      url: URL.createObjectURL(file), // для просмотра файла в этой сессии
     };
     setUploads((list) => [item, ...list]);
 
     try {
       const doc = await documentsApi.upload(file, (percent) => patchUpload(item.id, { progress: percent }));
       patchUpload(item.id, { status: "done", progress: 100 });
-      addDoc(doc);
+      addDoc({ ...doc, url: doc.url ?? item.url });
       setToast("Документ проиндексирован и добавлен в базу");
     } catch {
       // backend не готов — эмулируем процесс, чтобы экран был проверяем.
@@ -254,18 +278,35 @@ export default function UploadDocumentsPage() {
             <div style={{ width: 90 }}>Размер</div>
             <div style={{ width: 110 }}>Фрагменты</div>
             <div style={{ width: 110 }}>Статус</div>
+            <div style={{ width: 84, textAlign: "right" }}>Действия</div>
           </div>
           {docs.map((d) => (
             <div key={d.id} style={{ display: "flex", alignItems: "center", padding: "13px 16px", borderBottom: `1px solid ${colors.borderMuted}`, fontSize: 13.5 }}>
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
                 <DocBadge type={d.type} />
-                <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
+                <button
+                  onClick={() => openDoc(d)}
+                  title="Открыть документ"
+                  style={{ background: "none", border: "none", padding: 0, fontWeight: 500, fontSize: 13.5, color: colors.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", textAlign: "left", minWidth: 0 }}
+                >
+                  {d.name}
+                </button>
               </div>
               <div style={{ width: 120, color: colors.textMuted }}>{d.date ?? "—"}</div>
               <div style={{ width: 90, color: colors.textMuted }}>{d.size ?? "—"}</div>
               <div style={{ width: 110, color: colors.textMuted }}>{d.frags || "—"}</div>
               <div style={{ width: 110 }}>
                 <StatusChip status={d.status} />
+              </div>
+              <div style={{ width: 84, display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                <button onClick={() => openDoc(d)} title="Открыть" style={iconActionStyle(false)}>
+                  <Icon name="file" size={15} />
+                </button>
+                {canDelete && (
+                  <button onClick={() => removeDoc(d)} title="Удалить" style={iconActionStyle(true)}>
+                    <Icon name="trash" size={15} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -275,4 +316,20 @@ export default function UploadDocumentsPage() {
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
+}
+
+function iconActionStyle(danger: boolean): React.CSSProperties {
+  return {
+    background: "none",
+    border: `1px solid ${colors.border}`,
+    color: danger ? "#C7575C" : colors.textSoft,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    flex: "0 0 auto",
+  };
 }

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 
 /** Тост-уведомление снизу по центру. Автоскрытие через `duration` мс. */
@@ -16,7 +17,7 @@ export function Toast({
     return () => clearTimeout(t);
   }, [message, duration, onClose]);
 
-  return (
+  return createPortal(
     <div
       role="status"
       style={{
@@ -40,6 +41,7 @@ export function Toast({
     >
       <Icon name="check" size={16} />
       {message}
-    </div>
+    </div>,
+    document.body
   );
 }

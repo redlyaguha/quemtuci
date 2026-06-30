@@ -154,8 +154,8 @@ function QuickSearch({
   );
 }
 
-function QueueRow({ q, onOpen }: { q: Queue; onOpen: () => void }) {
-  const myPos = q.students.findIndex((s) => s.me) + 1 || null;
+function QueueRow({ q, onOpen, currentUserId }: { q: Queue; onOpen: () => void; currentUserId: string | number }) {
+  const myPos = q.students.findIndex((s) => s.userId === currentUserId) + 1 || null;
   return (
     <div
       onClick={onOpen}
@@ -243,7 +243,7 @@ function StudentDashboard({
   goKnowledge,
   goQueues,
 }: {
-  user: { group?: string | null };
+  user: { id: string | number; group?: string | null };
   queues: Queue[];
   docs: DocumentItem[];
   query: string;
@@ -291,7 +291,7 @@ function StudentDashboard({
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {myQueues.length ? (
-              myQueues.map((q) => <QueueRow key={q.id} q={q} onOpen={() => openQueue(q.id)} />)
+              myQueues.map((q) => <QueueRow key={q.id} q={q} currentUserId={user.id} onOpen={() => openQueue(q.id)} />)
             ) : (
               <EmptyHint>Для вашей группы пока нет очередей</EmptyHint>
             )}

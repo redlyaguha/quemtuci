@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { DocBadge } from "../components/DocBadge";
 import { Highlight } from "../components/Highlight";
+import { Toast } from "../components/Toast";
 import { searchApi } from "../api";
 import { MOCK_CORPUS, SEARCH_HISTORY_SEED } from "../data/mock";
+import { localDocs } from "../data/localDocs";
 import { colors } from "../theme";
-import type { SearchResult, DocumentType } from "../types";
+import type { SearchResult, DocumentType, DocumentItem } from "../types";
 
 /**
  * База знаний — полнотекстовый поиск по документам [FE-04].
@@ -50,6 +52,12 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const openDoc = (d: DocumentItem) => {
+    if (d.url) window.open(d.url, "_blank", "noopener");
+    else setToast("Файл доступен после интеграции с хранилищем");
+  };
 
   const runSearch = async (value: string) => {
     const q = value.trim();
@@ -174,6 +182,27 @@ export default function KnowledgeBasePage() {
               </button>
             ))}
           </div>
+
+          {/* Документы базы знаний (включая загруженные) */}
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, margin: "20px 0 8px" }}>Документы базы знаний</div>
+          <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "hidden" }}>
+            {localDocs.list().map((d, i, arr) => (
+              <button
+                key={d.id}
+                onClick={() => openDoc(d)}
+                style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${colors.borderMuted}` : "none", cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left" }}
+              >
+                <DocBadge type={d.type} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                  <div style={{ fontSize: 11.5, color: colors.textFaint }}>
+                    {d.frags ? `${d.frags} фрагментов` : "не проиндексирован"}
+                  </div>
+                </div>
+                <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, flex: "0 0 auto" }}>Открыть →</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -250,6 +279,8 @@ export default function KnowledgeBasePage() {
       )}
 
       {loading && <div style={{ color: colors.textMuted, fontSize: 14, padding: "20px 0" }}>Поиск…</div>}
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
