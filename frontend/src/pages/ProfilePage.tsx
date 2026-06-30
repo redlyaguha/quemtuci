@@ -24,6 +24,19 @@ const NOTIF_DEFS = [
   { key: "schedule", label: "Напоминания о парах" },
 ] as const;
 
+const NOTIF_STORAGE_KEY = "campus:notif-prefs";
+const NOTIF_DEFAULTS: Record<string, boolean> = { queue: true, search: false, schedule: true };
+
+function loadNotif(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+    if (raw) return { ...NOTIF_DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    /* повреждённое значение — берём значения по умолчанию */
+  }
+  return NOTIF_DEFAULTS;
+}
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +44,12 @@ export default function ProfilePage() {
   const [integration, setIntegration] = useState<IntegrationStatus>({ connected: false });
   const [intBusy, setIntBusy] = useState<"sync" | "disconnect" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [notif, setNotif] = useState<Record<string, boolean>>({ queue: true, search: false, schedule: true });
+  const [notif, setNotif] = useState<Record<string, boolean>>(loadNotif);
+
+  // Сохраняем настройки уведомлений (до появления backend-эндпоинта) в localStorage.
+  useEffect(() => {
+    localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(notif));
+  }, [notif]);
 
   useEffect(() => {
     let alive = true;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { queuesApi } from "../api";
 import { GROUPS, QUEUE_TYPES } from "../data/constants";
@@ -81,7 +82,7 @@ export function CreateQueueModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -178,6 +179,7 @@ export function CreateQueueModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
