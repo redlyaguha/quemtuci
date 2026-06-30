@@ -10,7 +10,8 @@ import type { Queue } from "../types";
  */
 let queues: Queue[] = MOCK_QUEUES.map((q) => ({
   ...q,
-  students: q.students.map((s) => ({ ...s })),
+  // Стабильный номер-талон по исходному порядку записи.
+  students: q.students.map((s, i) => ({ ...s, seq: s.seq ?? i + 1 })),
 }));
 
 export const localQueues = {

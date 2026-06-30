@@ -69,7 +69,7 @@ export default function QueueDetailPage() {
   const activeStudents = queue.students.filter((s) => !s.passed);
   const doneStudents = queue.students
     .filter((s) => s.passed)
-    .sort((a, b) => (a.passedPosition ?? 0) - (b.passedPosition ?? 0));
+    .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
 
   const myActiveIndex = activeStudents.findIndex(isMe);
   const myPos = myActiveIndex >= 0 ? myActiveIndex + 1 : null;
@@ -89,7 +89,9 @@ export default function QueueDetailPage() {
 
   const join = () => {
     if (!user) return;
-    const me: QueueMember = { id: `me-${Date.now()}`, name: user.name, userId: user.id };
+    // Стабильный номер-талон: на единицу больше максимального среди всех (включая сдавших).
+    const nextSeq = queue.students.reduce((m, s) => Math.max(m, s.seq ?? 0), 0) + 1;
+    const me: QueueMember = { id: `me-${Date.now()}`, name: user.name, userId: user.id, seq: nextSeq };
     mutate({ ...queue, students: [...queue.students, me] }, () => queuesApi.join(queue.id), "Вы записались в очередь");
   };
 
@@ -110,10 +112,9 @@ export default function QueueDetailPage() {
     mutate({ ...queue, students: queue.students.filter((s) => s.id !== member.id) }, () => queuesApi.removeMember(queue.id, member.id));
   };
 
-  /** Отметить активного студента сдавшим: фиксируем номер, ставим в конец списка серым. */
+  /** Отметить активного студента сдавшим: ставим в конец списка серым (номер-талон сохраняется). */
   const markPassed = (member: QueueMember, grade: number | null) => {
-    const passedPosition = activeStudents.findIndex((s) => s.id === member.id) + 1;
-    const updated: QueueMember = { ...member, passed: true, grade, passedPosition };
+    const updated: QueueMember = { ...member, passed: true, grade };
     const others = queue.students.filter((s) => s.id !== member.id);
     mutate(
       { ...queue, students: [...others, updated] },
@@ -202,7 +203,7 @@ export default function QueueDetailPage() {
               const last = i === activeStudents.length - 1 && doneStudents.length === 0;
               return (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: last ? "none" : `1px solid ${colors.borderMuted}`, background: mine ? "#F7FBF8" : colors.surface }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 9, background: mine ? colors.success : colors.primarySoft, color: mine ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{i + 1}</div>
+                  <div style={{ width: 30, height: 30, borderRadius: 9, background: mine ? colors.success : colors.primarySoft, color: mine ? "#fff" : colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{s.seq ?? i + 1}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</div>
                     {mine && <div style={{ fontSize: 11.5, color: colors.textFaint }}>это вы</div>}
@@ -229,7 +230,7 @@ export default function QueueDetailPage() {
             {/* Сдавшие — серым, внизу, с зафиксированным номером и оценкой */}
             {doneStudents.map((s, i) => (
               <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 15px", borderBottom: i < doneStudents.length - 1 ? `1px solid ${colors.borderMuted}` : "none", background: "#FAFBFC" }}>
-                <div style={{ width: 30, height: 30, borderRadius: 9, background: "#EDEEF3", color: colors.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{s.passedPosition ?? "—"}</div>
+                <div style={{ width: 30, height: 30, borderRadius: 9, background: "#EDEEF3", color: colors.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "0 0 auto" }}>{s.seq ?? "—"}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, textDecoration: "line-through" }}>{s.name}</div>
                   <div style={{ fontSize: 11.5, color: colors.textFaint }}>сдал{isMe(s) ? " · это вы" : ""}</div>
@@ -265,7 +266,7 @@ export default function QueueDetailPage() {
           }}
           onCancel={() => setPassingMember(null)}
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 14, alignItems: "center" }}>
             {[5, 4, 3, 2].map((g) => {
               const on = pendingGrade === g;
               return (
@@ -278,6 +279,21 @@ export default function QueueDetailPage() {
                 </button>
               );
             })}
+            <input
+              type="number"
+              value={pendingGrade ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") setPendingGrade(null);
+                else {
+                  const n = Number(v);
+                  if (!Number.isNaN(n)) setPendingGrade(n);
+                }
+              }}
+              placeholder="Своя"
+              title="Ввести свою оценку"
+              style={{ width: 80, height: 44, borderRadius: 11, border: `1px solid ${colors.border}`, background: colors.surfaceMuted, padding: "0 12px", fontSize: 15, fontWeight: 600, color: colors.text }}
+            />
             <button
               onClick={() => setPendingGrade(null)}
               style={{ height: 44, padding: "0 16px", borderRadius: 11, border: `1px solid ${pendingGrade === null ? colors.primary : colors.border}`, background: pendingGrade === null ? colors.primarySoft : colors.surface, color: pendingGrade === null ? colors.primary : colors.textSoft, fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
