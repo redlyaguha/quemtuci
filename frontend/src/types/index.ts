@@ -37,6 +37,12 @@ export interface DocumentItem {
   status: DocumentStatus;
   /** Ссылка для просмотра файла (object URL для загруженных в этой сессии). */
   url?: string;
+  /** Кто загрузил документ (имя). */
+  uploaderName?: string;
+  /** Роль загрузившего (студент/преподаватель/админ). */
+  uploaderRole?: Role;
+  /** Группа загрузившего (если есть). */
+  uploaderGroup?: string;
 }
 
 // ---------- Поиск ----------
@@ -71,6 +77,12 @@ export interface QueueMember {
    * ошибочно показывается другим ролям. На бэкенде проставляется по JWT.
    */
   userId?: number | string;
+  /** Студент отмечен преподавателем как сдавший. */
+  passed?: boolean;
+  /** Оценка за работу (если выставлена). null/undefined — сдал без оценки. */
+  grade?: number | null;
+  /** Номер в очереди, зафиксированный в момент отметки «сдал». */
+  passedPosition?: number;
 }
 
 export interface Queue {
