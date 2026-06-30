@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon, queueTypeIcon } from "../components/Icon";
 import { StatusChip } from "../components/StatusChip";
-import { CreateQueueModal } from "../components/CreateQueueModal";
+import { CreateQueueModal, type CreateQueuePrefill } from "../components/CreateQueueModal";
 import { useAuth } from "../hooks/useAuth";
-import { queuesApi } from "../api";
+import { queuesApi, scheduleApi } from "../api";
 import { localQueues } from "../data/localStore";
+import { PRACTICE_DEFENSE_PREFILL } from "../data/constants";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
 import type { Queue, QueueStatus } from "../types";
 
 /**
- * Список очередей — [FE-06].
- * Фильтры по статусу, карточки очередей, создание (для преподавателя).
+ * Список очередей — [FE-06], [FE-P2].
+ * Фильтры по статусу, карточки очередей, создание (для преподавателя),
+ * быстрое создание очереди на защиту практики 06.07 ([FE-P2]).
  */
 
 type Filter = "all" | QueueStatus;
@@ -29,6 +31,34 @@ export default function QueuesPage() {
   const [queues, setQueues] = useState<Queue[]>(localQueues.list());
   const [filter, setFilter] = useState<Filter>("all");
   const [creating, setCreating] = useState(false);
+  const [prefill, setPrefill] = useState<CreateQueuePrefill | undefined>(undefined);
+  const [pdBusy, setPdBusy] = useState(false);
+
+  const addAndOpen = (q: Queue) => {
+    localQueues.add(q);
+    setQueues((list) => [q, ...list]);
+    navigate(ROUTES.queueDetail(q.id));
+  };
+
+  /** [FE-P2] Очередь на защиту практики: профильный эндпоинт, иначе форма с предзаполнением. */
+  const createPracticeDefense = async () => {
+    setPdBusy(true);
+    try {
+      const q = (await scheduleApi.createPracticeDefenseQueue()) as Queue;
+      addAndOpen(q);
+    } catch {
+      // backend не готов — открываем форму с предзаполненными полями события 06.07.
+      setPrefill(PRACTICE_DEFENSE_PREFILL);
+      setCreating(true);
+    } finally {
+      setPdBusy(false);
+    }
+  };
+
+  const closeModal = () => {
+    setCreating(false);
+    setPrefill(undefined);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -64,13 +94,24 @@ export default function QueuesPage() {
           })}
         </div>
         {isTeacher && (
-          <button
-            onClick={() => setCreating(true)}
-            style={{ background: colors.primary, color: "#fff", border: "none", borderRadius: 12, padding: "11px 18px", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 7 }}
-          >
-            <Icon name="plus" size={16} />
-            Создать очередь
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              onClick={createPracticeDefense}
+              disabled={pdBusy}
+              title="Очередь на защиту учебной практики 06.07"
+              style={{ background: colors.surface, color: colors.primary, border: `1px solid ${colors.primary}`, borderRadius: 12, padding: "11px 18px", fontWeight: 600, fontSize: 14, cursor: pdBusy ? "default" : "pointer", opacity: pdBusy ? 0.6 : 1, display: "flex", alignItems: "center", gap: 7 }}
+            >
+              <Icon name="defense" size={16} />
+              {pdBusy ? "Создаём…" : "Защита практики"}
+            </button>
+            <button
+              onClick={() => setCreating(true)}
+              style={{ background: colors.primary, color: "#fff", border: "none", borderRadius: 12, padding: "11px 18px", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 7 }}
+            >
+              <Icon name="plus" size={16} />
+              Создать очередь
+            </button>
+          </div>
         )}
       </div>
 
@@ -125,12 +166,11 @@ export default function QueuesPage() {
       {creating && (
         <CreateQueueModal
           teacherName={user?.name ?? "Преподаватель"}
-          onClose={() => setCreating(false)}
+          prefill={prefill}
+          onClose={closeModal}
           onCreated={(q) => {
-            setCreating(false);
-            localQueues.add(q);
-            setQueues((list) => [q, ...list]);
-            navigate(ROUTES.queueDetail(q.id));
+            closeModal();
+            addAndOpen(q);
           }}
         />
       )}
