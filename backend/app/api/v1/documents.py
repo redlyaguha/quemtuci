@@ -19,6 +19,7 @@ from app.models.document import Document, DocumentChunk, DocumentStatus, Documen
 from app.models.user import UserRole
 from app.schemas.auth import UserPublic
 from app.schemas.documents import DocumentItem
+from app.services import elasticsearch_service as es_svc
 from app.services.document_parser import ParserError, chunk_pages, extract_text
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -99,6 +100,15 @@ async def upload_document(
     await session.commit()
     await session.refresh(doc)
 
+    # --- BE-S2: индексация чанков в Elasticsearch ---
+    await es_svc.index_chunks(
+        document_id=doc.id,
+        file_name=doc.file_name,
+        file_type=doc.file_type.value,
+        chunks=[{"chunk_id": tc.chunk_id, "page_number": tc.page_number, "text": tc.text}
+                for tc in text_chunks],
+    )
+
     return DocumentItem.from_doc(doc, chunk_count=len(text_chunks))
 
 
@@ -146,3 +156,4 @@ async def delete_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
     await session.delete(doc)
     await session.commit()
+    await es_svc.delete_document_chunks(document_id)

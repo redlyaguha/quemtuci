@@ -1,17 +1,25 @@
-"""Точка входа FastAPI-приложения «Кампус».
+"""Точка входа FastAPI-приложения «Кампус»."""
+from contextlib import asynccontextmanager
 
-Скелет: подключает роутеры API v1. Реализация эндпоинтов — в соответствующих issue.
-"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.v1 import auth, documents, search, queues, integrations, schedule
+from app.services.elasticsearch_service import ensure_index
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await ensure_index()
+    yield
+
 
 app = FastAPI(
     title="Кампус API",
     description="База знаний университета и система учебных очередей.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
