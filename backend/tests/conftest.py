@@ -2,10 +2,21 @@
 
 Мокает ensure_index() чтобы lifespan не требовал запущенного Elasticsearch.
 """
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from pathlib import Path
+
+FIXTURE_FILES = (
+    "valid.pdf",
+    "valid.docx",
+    "empty.pdf",
+    "empty.docx",
+    "corrupted.pdf",
+    "corrupted.docx",
+    "fancy.pdf",
+    "fancy.docx",
+)
 
 @pytest.fixture(autouse=True)
 def mock_es_lifespan():
@@ -19,7 +30,11 @@ def mock_es_lifespan():
 @pytest.fixture(scope="session")
 def fixtures_dir():
     """Путь к папке с тестовыми файлами."""
-    return Path(__file__).parent / "fixtures" / "files"
+    path = Path(__file__).parent / "fixtures" / "files"
+    missing = [name for name in FIXTURE_FILES if not (path / name).exists()]
+    if missing:
+        pytest.fail(f"Не найдены тестовые фикстуры: {', '.join(missing)}")
+    return path
 
 @pytest.fixture
 def sample_files(fixtures_dir):
