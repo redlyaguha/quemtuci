@@ -1,7 +1,7 @@
 """Глобальная конфигурация тестов.
 
-Мокает lifespan-зависимости чтобы тесты не требовали
-запущенного Elasticsearch и PostgreSQL.
+Мокает lifespan-зависимости и внешние сервисы (ES, Redis, PostgreSQL)
+чтобы тесты не требовали запущенной инфраструктуры.
 """
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -22,10 +22,12 @@ FIXTURE_FILES = (
 
 @pytest.fixture(autouse=True)
 def mock_lifespan_deps():
-    """Перехватывает ensure_index и seed_practice_defense в lifespan."""
+    """Перехватывает ensure_index, seed и Redis в каждом тесте."""
     with (
         patch("app.main.ensure_index", new_callable=AsyncMock),
         patch("app.main.seed_practice_defense", new_callable=AsyncMock),
+        patch("app.services.cache.cache_get", new_callable=AsyncMock, return_value=None),
+        patch("app.services.cache.cache_set", new_callable=AsyncMock),
     ):
         yield
 

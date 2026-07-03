@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from app.core.security import create_access_token, get_current_user
 from app.models.user import UserRole
@@ -38,20 +38,48 @@ _DEMO_USERS: dict[UserRole, UserPublic] = {
 }
 
 
-@router.post("/demo", response_model=AuthResponse)
+@router.post(
+    "/demo",
+    response_model=AuthResponse,
+    summary="Демо-вход",
+    response_description="JWT-токен и профиль пользователя",
+    responses={
+        422: {"description": "Недопустимое значение role (ожидается student / teacher / admin)"},
+    },
+)
 async def demo_login(body: DemoLoginRequest) -> AuthResponse:
-    """Демо-вход для ролей student / teacher / admin. Токен MTUCI не требуется."""
+    """Выдаёт JWT без пароля для тестирования.
+
+    Укажите желаемую роль — получите токен с соответствующими правами.
+    Срок действия токена — 24 часа.
+    """
     user = _DEMO_USERS[body.role]
     return AuthResponse(access_token=create_access_token(user), user=user)
 
 
-@router.get("/me", response_model=UserPublic)
+@router.get(
+    "/me",
+    response_model=UserPublic,
+    summary="Профиль текущего пользователя",
+    response_description="Данные из JWT-токена (без обращения к БД)",
+    responses={
+        401: {"description": "Токен отсутствует, истёк или недействителен"},
+    },
+)
 async def me(current_user: UserPublic = Depends(get_current_user)) -> UserPublic:
-    """Профиль текущего пользователя по JWT."""
+    """Возвращает профиль, закодированный в JWT.
+
+    Не выполняет запрос к базе данных — все данные берутся из токена.
+    """
     return current_user
 
 
-@router.post("/mtuci-token")
+@router.post(
+    "/mtuci-token",
+    summary="Вход по токену МТУСИ (не реализован)",
+    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+    include_in_schema=False,
+)
 async def mtuci_token_login() -> dict:
     """Вход по пользовательскому MTUCI/TECH-токену. TODO: [BE-M3]."""
     raise NotImplementedError

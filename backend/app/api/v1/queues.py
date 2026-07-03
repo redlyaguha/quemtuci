@@ -22,6 +22,10 @@ from app.schemas.queues import QueueCreate, QueueMemberOut, QueueOut, ReorderReq
 
 router = APIRouter(prefix="/queues", tags=["queues"])
 
+_401 = {"description": "Токен отсутствует или недействителен"}
+_403 = {"description": "Недостаточно прав"}
+_404 = {"description": "Очередь или участник не найдены"}
+
 
 # ── хелперы ──────────────────────────────────────────────────────────────────
 
@@ -72,7 +76,13 @@ def _assert_owner(queue: Queue, user: UserPublic) -> None:
 
 # ── BE-Q2: CRUD ───────────────────────────────────────────────────────────────
 
-@router.get("", response_model=list[QueueOut])
+@router.get(
+    "",
+    response_model=list[QueueOut],
+    summary="Список очередей",
+    response_description="Очереди, отсортированные по дате и времени начала",
+    responses={401: _401},
+)
 async def list_queues(
     group: str | None = Query(None),
     teacher_id: uuid.UUID | None = Query(None),
@@ -103,7 +113,14 @@ async def list_queues(
     return [_queue_to_out(q) for q in queues]
 
 
-@router.post("", response_model=QueueOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=QueueOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать очередь",
+    response_description="Созданная очередь (без участников)",
+    responses={401: _401, 403: {"description": "Требуется роль teacher или admin"}, 422: {"description": "Ошибка валидации тела запроса"}},
+)
 async def create_queue(
     body: QueueCreate,
     session: AsyncSession = Depends(get_session),
@@ -130,7 +147,13 @@ async def create_queue(
     return _queue_to_out(queue, teacher_name=current_user.name)
 
 
-@router.get("/{queue_id}", response_model=QueueOut)
+@router.get(
+    "/{queue_id}",
+    response_model=QueueOut,
+    summary="Очередь по ID",
+    response_description="Очередь со списком участников",
+    responses={401: _401, 404: _404},
+)
 async def get_queue(
     queue_id: int,
     session: AsyncSession = Depends(get_session),
@@ -142,7 +165,18 @@ async def get_queue(
 
 # ── BE-Q3: join / leave ───────────────────────────────────────────────────────
 
-@router.post("/{queue_id}/join", response_model=QueueOut)
+@router.post(
+    "/{queue_id}/join",
+    response_model=QueueOut,
+    summary="Встать в очередь",
+    response_description="Очередь с обновлённым списком участников",
+    responses={
+        400: {"description": "Очередь закрыта / переполнена / вы уже записаны"},
+        401: _401,
+        403: {"description": "Только студент может записаться в очередь"},
+        404: _404,
+    },
+)
 async def join_queue(
     queue_id: int,
     session: AsyncSession = Depends(get_session),
@@ -174,7 +208,18 @@ async def join_queue(
     return _queue_to_out(queue)
 
 
-@router.post("/{queue_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/{queue_id}/leave",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Выйти из очереди",
+    response_description="Выход выполнен, позиции пересчитаны (нет тела ответа)",
+    responses={
+        400: {"description": "Очередь уже закрыта"},
+        401: _401,
+        403: {"description": "Только студент может выйти из очереди"},
+        404: {"description": "Вы не записаны в эту очередь"},
+    },
+)
 async def leave_queue(
     queue_id: int,
     session: AsyncSession = Depends(get_session),
@@ -202,7 +247,18 @@ async def leave_queue(
 
 # ── BE-Q4: reorder / remove / close ──────────────────────────────────────────
 
-@router.patch("/{queue_id}/members/reorder", response_model=QueueOut)
+@router.patch(
+    "/{queue_id}/members/reorder",
+    response_model=QueueOut,
+    summary="Изменить порядок участников",
+    response_description="Очередь с обновлёнными позициями (seq не меняется)",
+    responses={
+        400: {"description": "order содержит не все id участников"},
+        401: _401,
+        403: _403,
+        404: _404,
+    },
+)
 async def reorder_members(
     queue_id: int,
     body: ReorderRequest,
@@ -225,7 +281,13 @@ async def reorder_members(
     return _queue_to_out(queue)
 
 
-@router.delete("/{queue_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{queue_id}/members/{member_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить участника из очереди",
+    response_description="Участник удалён, позиции пересчитаны (нет тела ответа)",
+    responses={401: _401, 403: _403, 404: _404},
+)
 async def remove_member(
     queue_id: int,
     member_id: int,
@@ -249,7 +311,18 @@ async def remove_member(
     await session.commit()
 
 
-@router.patch("/{queue_id}/close", response_model=QueueOut)
+@router.patch(
+    "/{queue_id}/close",
+    response_model=QueueOut,
+    summary="Закрыть очередь",
+    response_description="Очередь со статусом closed",
+    responses={
+        400: {"description": "Очередь уже закрыта"},
+        401: _401,
+        403: _403,
+        404: _404,
+    },
+)
 async def close_queue(
     queue_id: int,
     session: AsyncSession = Depends(get_session),
