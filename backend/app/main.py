@@ -7,11 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import auth, documents, search, queues, integrations, schedule
 from app.services.elasticsearch_service import ensure_index
+from app.services.seed import seed_practice_defense
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_index()
+    await seed_practice_defense()
     yield
 
 
