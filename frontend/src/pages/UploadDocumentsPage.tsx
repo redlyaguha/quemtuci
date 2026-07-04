@@ -5,7 +5,6 @@ import { StatusChip } from "../components/StatusChip";
 import { Toast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
 import { documentsApi } from "../api";
-import { localDocs } from "../data/localDocs";
 import { colors } from "../theme";
 import type { DocumentItem, DocumentType, DocumentStatus } from "../types";
 
@@ -15,8 +14,6 @@ import type { DocumentItem, DocumentType, DocumentStatus } from "../types";
  * прогресс-бары со сменой статусов (Загрузка → Индексация → Готово / Ошибка),
  * таблица загруженных документов.
  *
- * Пока backend `/documents/upload` ([BE-D1]) не готов, загрузка эмулируется
- * клиентски, чтобы экран был проверяем; при готовности API используется он.
  */
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 МБ — лимит backend
@@ -45,26 +42,23 @@ function humanSize(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
 }
 
-const today = () =>
-  new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-
 export default function UploadDocumentsPage() {
   const { user } = useAuth();
   const canDelete = user?.role === "teacher" || user?.role === "admin";
 
-  const [docs, setDocs] = useState<DocumentItem[]>(localDocs.list());
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Начальный список документов из API (с фолбэком на общий демо-стор).
+  // Начальный список документов из API.
   useEffect(() => {
     let alive = true;
     documentsApi
       .list()
       .then((d) => alive && setDocs(d))
-      .catch(() => {/* остаёмся на демо-данных стора */});
+      .catch(() => alive && setToast("Не удалось загрузить список документов"));
     return () => {
       alive = false;
     };
@@ -74,57 +68,23 @@ export default function UploadDocumentsPage() {
     setUploads((list) => list.map((u) => (u.id === id ? { ...u, ...patch } : u)));
 
   const addDoc = (doc: DocumentItem) => {
-    localDocs.add(doc);
     setDocs((list) => [doc, ...list]);
   };
 
-  const removeDoc = (doc: DocumentItem) => {
-    documentsApi.remove(doc.id).catch(() => {/* backend не готов — локального удаления достаточно */});
-    localDocs.remove(doc.id);
-    setDocs((list) => list.filter((d) => d.id !== doc.id));
-    if (doc.url) URL.revokeObjectURL(doc.url);
-    setToast("Документ удалён из базы");
+  const removeDoc = async (doc: DocumentItem) => {
+    try {
+      await documentsApi.remove(doc.id);
+      setDocs((list) => list.filter((d) => d.id !== doc.id));
+      if (doc.url) URL.revokeObjectURL(doc.url);
+      setToast("Документ удалён из базы");
+    } catch {
+      setToast("Не удалось удалить документ");
+    }
   };
 
   const openDoc = (doc: DocumentItem) => {
     if (doc.url) window.open(doc.url, "_blank", "noopener");
     else setToast("Файл доступен после интеграции с хранилищем");
-  };
-
-  /** Клиентская эмуляция: Загрузка → Индексация → Готово. */
-  const simulate = (item: UploadItem) => {
-    let progress = 0;
-    let phase: DocumentStatus = "uploading";
-    const tick = () => {
-      progress += 9 + Math.random() * 8;
-      if (progress >= 100) {
-        if (phase === "uploading") {
-          phase = "indexing";
-          progress = 0;
-          patchUpload(item.id, { status: "indexing", progress: 0 });
-        } else {
-          patchUpload(item.id, { status: "done", progress: 100 });
-          addDoc({
-            id: item.id,
-            name: item.name,
-            type: item.type,
-            date: today(),
-            size: item.size,
-            frags: 30 + Math.floor(Math.random() * 90),
-            status: "done",
-            url: item.url,
-            uploaderName: user?.name,
-            uploaderRole: user?.role,
-            uploaderGroup: user?.group ?? undefined,
-          });
-          setToast("Документ проиндексирован и добавлен в базу");
-          return;
-        }
-      }
-      patchUpload(item.id, { progress: Math.min(100, progress) });
-      setTimeout(tick, 280);
-    };
-    setTimeout(tick, 280);
   };
 
   const startUpload = async (file: File) => {
@@ -161,8 +121,8 @@ export default function UploadDocumentsPage() {
       });
       setToast("Документ проиндексирован и добавлен в базу");
     } catch {
-      // backend не готов — эмулируем процесс, чтобы экран был проверяем.
-      simulate(item);
+      patchUpload(item.id, { status: "error", progress: 100 });
+      setToast("Не удалось загрузить документ");
     }
   };
 

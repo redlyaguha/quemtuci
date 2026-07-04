@@ -24,5 +24,5 @@ export const documentsApi = {
   },
 
   remove: (id: string | number) =>
-    api.delete(`/documents/${id}`).then((r) => r.data),
+    api.delete(`/documents/${id}`).then(() => ({ ok: true })),
 };

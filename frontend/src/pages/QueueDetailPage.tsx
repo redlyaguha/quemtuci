@@ -6,7 +6,6 @@ import { Toast } from "../components/Toast";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useAuth } from "../hooks/useAuth";
 import { queuesApi } from "../api";
-import { localQueues } from "../data/localStore";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
 import type { Queue, QueueMember } from "../types";
@@ -16,8 +15,7 @@ import type { Queue, QueueMember } from "../types";
  * Студент: запись/выход и своя позиция. Преподаватель: порядок студентов
  * (вверх/вниз), удаление, закрытие очереди.
  *
- * Мутации идут через API; пока backend ([BE-Q3]/[BE-Q4]) не готов, состояние
- * обновляется оптимистично локально, чтобы поток был проверяем.
+ * Мутации идут через API; после ответа backend очередь заменяется пересчитанным объектом.
  */
 export default function QueueDetailPage() {
   const { id } = useParams();
@@ -33,16 +31,10 @@ export default function QueueDetailPage() {
   useEffect(() => {
     if (id === undefined) return;
     let alive = true;
-    const fallback = () => {
-      const local = localQueues.get(id);
-      if (!alive) return;
-      if (local) setQueue(local);
-      else setNotFound(true);
-    };
     queuesApi
       .get(id)
       .then((q) => alive && setQueue(q))
-      .catch(fallback);
+      .catch(() => alive && setNotFound(true));
     return () => {
       alive = false;
     };
@@ -79,45 +71,41 @@ export default function QueueDetailPage() {
   const canManage = isTeacher && queue.status !== "closed";
   const canJoin = isStudent && !iAmInQueue && queue.status !== "closed";
 
-  /** Оптимистичное обновление + фоновый вызов API (ошибки backend игнорируем). */
-  const mutate = (next: Queue, apiCall: () => Promise<unknown>, message?: string) => {
-    setQueue(next);
-    localQueues.update(next); // согласованность при возврате к списку в демо-режиме
-    if (message) setToast(message);
-    apiCall().catch(() => {/* backend не готов — локального обновления достаточно */});
+  const mutate = async (apiCall: () => Promise<Queue>, message?: string) => {
+    try {
+      const next = await apiCall();
+      setQueue(next);
+      if (message) setToast(message);
+    } catch {
+      setToast("Не удалось обновить очередь");
+    }
   };
 
   const join = () => {
     if (!user) return;
-    // Стабильный номер-талон: на единицу больше максимального среди всех (включая сдавших).
-    const nextSeq = queue.students.reduce((m, s) => Math.max(m, s.seq ?? 0), 0) + 1;
-    const me: QueueMember = { id: `me-${Date.now()}`, name: user.name, userId: user.id, seq: nextSeq };
-    mutate({ ...queue, students: [...queue.students, me] }, () => queuesApi.join(queue.id), "Вы записались в очередь");
+    mutate(() => queuesApi.join(queue.id), "Вы записались в очередь");
   };
 
   const leave = () => {
-    mutate({ ...queue, students: queue.students.filter((s) => !isMe(s)) }, () => queuesApi.leave(queue.id), "Вы вышли из очереди");
+    mutate(() => queuesApi.leave(queue.id), "Вы вышли из очереди");
   };
 
   // Перестановка работает в пределах активных (они идут первыми в массиве).
   const move = (index: number, dir: -1 | 1) => {
     const j = index + dir;
     if (j < 0 || j >= activeStudents.length) return;
-    const students = [...queue.students];
-    [students[index], students[j]] = [students[j], students[index]];
-    mutate({ ...queue, students }, () => queuesApi.reorder(queue.id, students.map((s) => s.id)));
+    const nextActive = [...activeStudents];
+    [nextActive[index], nextActive[j]] = [nextActive[j], nextActive[index]];
+    mutate(() => queuesApi.reorder(queue.id, [...nextActive, ...doneStudents].map((s) => s.id)));
   };
 
   const removeMember = (member: QueueMember) => {
-    mutate({ ...queue, students: queue.students.filter((s) => s.id !== member.id) }, () => queuesApi.removeMember(queue.id, member.id));
+    mutate(() => queuesApi.removeMember(queue.id, member.id));
   };
 
   /** Отметить активного студента сдавшим: ставим в конец списка серым (номер-талон сохраняется). */
   const markPassed = (member: QueueMember, grade: number | null) => {
-    const updated: QueueMember = { ...member, passed: true, grade };
-    const others = queue.students.filter((s) => s.id !== member.id);
     mutate(
-      { ...queue, students: [...others, updated] },
       () => queuesApi.completeMember(queue.id, member.id, grade),
       grade != null ? `Отмечено: сдал, оценка ${grade}` : "Отмечено: сдал без оценки"
     );
@@ -125,7 +113,7 @@ export default function QueueDetailPage() {
 
   const close = () => {
     setConfirmClose(false);
-    mutate({ ...queue, status: "closed" }, () => queuesApi.close(queue.id), "Очередь закрыта");
+    mutate(() => queuesApi.close(queue.id), "Очередь закрыта");
   };
 
   return (

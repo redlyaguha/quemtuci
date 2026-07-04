@@ -56,3 +56,7 @@ class QueueCreate(BaseModel):
 
 class ReorderRequest(BaseModel):
     order: list[int]  # список member_id в новом порядке
+
+
+class CompleteMemberRequest(BaseModel):
+    grade: int | None = None

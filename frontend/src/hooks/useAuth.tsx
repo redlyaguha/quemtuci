@@ -29,18 +29,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/**
- * Демо-профили для оффлайн-режима каркаса [FE-01]: пока backend-эндпоинты
- * /auth/* не реализованы ([BE-A2]/[BE-A3]), demo-вход поднимает локальную
- * сессию, чтобы роутинг и защищённые маршруты были проверяемы.
- * [FE-02] заменит фолбэк реальными ответами API.
- */
-const DEMO_USERS: Record<Role, User> = {
-  student: { id: "demo-student", name: "Соколов Артём", role: "student", group: "БПИ2403", telegram_id: "artem_sokolov" },
-  teacher: { id: "demo-teacher", name: "Иванов И. И.", role: "teacher", department: "Кафедра программной инженерии", telegram_id: "ivanov_teach" },
-  admin: { id: "demo-admin", name: "Петрова А. С.", role: "admin", department: "Модератор базы знаний", telegram_id: "admin_petrova" },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -82,13 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginDemo = useCallback(
     async (role: Role) => {
-      try {
-        const res = await authApi.demo(role);
-        applySession(res.access_token, res.user);
-      } catch {
-        // Фолбэк каркаса — см. комментарий к DEMO_USERS.
-        applySession(`demo.${role}.token`, DEMO_USERS[role]);
-      }
+      const res = await authApi.demo(role);
+      applySession(res.access_token, res.user);
     },
     [applySession]
   );

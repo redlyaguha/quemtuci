@@ -5,7 +5,6 @@ import { StatusChip } from "../components/StatusChip";
 import { CreateQueueModal, type CreateQueuePrefill } from "../components/CreateQueueModal";
 import { useAuth } from "../hooks/useAuth";
 import { queuesApi, scheduleApi } from "../api";
-import { localQueues } from "../data/localStore";
 import { PRACTICE_DEFENSE_PREFILL } from "../data/constants";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
@@ -28,14 +27,13 @@ const FILTERS: { key: Filter; label: string }[] = [
 export default function QueuesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [queues, setQueues] = useState<Queue[]>(localQueues.list());
+  const [queues, setQueues] = useState<Queue[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [creating, setCreating] = useState(false);
   const [prefill, setPrefill] = useState<CreateQueuePrefill | undefined>(undefined);
   const [pdBusy, setPdBusy] = useState(false);
 
   const addAndOpen = (q: Queue) => {
-    localQueues.add(q);
     setQueues((list) => [q, ...list]);
     navigate(ROUTES.queueDetail(q.id));
   };
@@ -47,7 +45,6 @@ export default function QueuesPage() {
       const q = (await scheduleApi.createPracticeDefenseQueue()) as Queue;
       addAndOpen(q);
     } catch {
-      // backend не готов — открываем форму с предзаполненными полями события 06.07.
       setPrefill(PRACTICE_DEFENSE_PREFILL);
       setCreating(true);
     } finally {
@@ -65,7 +62,7 @@ export default function QueuesPage() {
     queuesApi
       .list()
       .then((q) => alive && setQueues(q))
-      .catch(() => {/* демо-данные */});
+      .catch(() => alive && setQueues([]));
     return () => {
       alive = false;
     };
@@ -165,7 +162,6 @@ export default function QueuesPage() {
 
       {creating && (
         <CreateQueueModal
-          teacherName={user?.name ?? "Преподаватель"}
           prefill={prefill}
           onClose={closeModal}
           onCreated={(q) => {
