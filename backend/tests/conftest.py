@@ -1,6 +1,7 @@
 """Глобальная конфигурация тестов.
 
-Мокает ensure_index() чтобы lifespan не требовал запущенного Elasticsearch.
+Мокает lifespan-зависимости чтобы тесты не требовали
+запущенного Elasticsearch и PostgreSQL.
 """
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -18,14 +19,16 @@ FIXTURE_FILES = (
     "fancy.docx",
 )
 
+
 @pytest.fixture(autouse=True)
-def mock_es_lifespan():
-    """Перехватывает ensure_index при старте приложения в каждом тесте."""
-    with patch(
-        "app.services.elasticsearch_service.ensure_index",
-        new_callable=lambda: lambda: AsyncMock(),
+def mock_lifespan_deps():
+    """Перехватывает ensure_index и seed_practice_defense в lifespan."""
+    with (
+        patch("app.main.ensure_index", new_callable=AsyncMock),
+        patch("app.main.seed_practice_defense", new_callable=AsyncMock),
     ):
         yield
+
 
 @pytest.fixture(scope="session")
 def fixtures_dir():
@@ -35,6 +38,7 @@ def fixtures_dir():
     if missing:
         pytest.fail(f"Не найдены тестовые фикстуры: {', '.join(missing)}")
     return path
+
 
 @pytest.fixture
 def sample_files(fixtures_dir):
@@ -49,4 +53,3 @@ def sample_files(fixtures_dir):
         "fancy_pdf": fixtures_dir / "fancy.pdf",
         "fancy_docx": fixtures_dir / "fancy.docx",
     }
-
