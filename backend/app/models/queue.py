@@ -3,7 +3,7 @@ import enum
 import uuid
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, Time, func
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, Time, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,11 +52,15 @@ class Queue(Base):
     members: Mapped[list["QueueMember"]] = relationship(
         "QueueMember", back_populates="queue",
         cascade="all, delete-orphan", order_by="QueueMember.position",
+        lazy="selectin",
     )
 
 
 class QueueMember(Base):
     __tablename__ = "queue_members"
+    __table_args__ = (
+        UniqueConstraint("queue_id", "student_id", name="uq_queue_members_queue_student"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     queue_id: Mapped[int] = mapped_column(

@@ -91,10 +91,14 @@ def upgrade() -> None:
 
     op.create_index("ix_queue_members_queue_id", "queue_members", ["queue_id"])
     op.create_index("ix_queue_members_student_id", "queue_members", ["student_id"])
+    op.create_unique_constraint(
+        "uq_queue_members_queue_student", "queue_members", ["queue_id", "student_id"]
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_constraint("uq_queue_members_queue_student", "queue_members", type_="unique")
     op.drop_table("queue_members")
     op.drop_table("queues")
     queue_status.drop(op.get_bind(), checkfirst=True)
