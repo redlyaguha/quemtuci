@@ -31,6 +31,10 @@ _ALLOWED_TYPES = {
 }
 _ALLOWED_EXTENSIONS = {".pdf": DocumentType.pdf, ".docx": DocumentType.docx}
 
+_401 = {"description": "Токен отсутствует или недействителен"}
+_403 = {"description": "Требуется роль admin"}
+_404 = {"description": "Документ не найден"}
+
 
 def _detect_type(filename: str, content_type: str | None) -> DocumentType:
     ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -44,13 +48,34 @@ def _detect_type(filename: str, content_type: str | None) -> DocumentType:
     )
 
 
-@router.post("/upload", response_model=DocumentItem, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    response_model=DocumentItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Загрузить документ",
+    response_description="Метаданные загруженного документа и количество чанков",
+    responses={
+        400: {"description": "Неверный формат файла, превышен лимит 20 МБ или файл пустой"},
+        401: _401,
+        403: _403,
+    },
+)
 async def upload_document(
     file: UploadFile,
     session: AsyncSession = Depends(get_session),
     current_user: UserPublic = Depends(require_roles(UserRole.admin)),
 ) -> DocumentItem:
-    """Загрузка PDF/DOCX (≤20 МБ). Только admin. [BE-D1, BE-D2, BE-D3]."""
+    """Загрузка PDF или DOCX файла в базу знаний. Только для **admin**.
+
+    Пайплайн обработки:
+    1. Валидация типа файла (Content-Type / расширение) и размера (≤ 20 МБ)
+    2. Извлечение текста постранично (pdfplumber для PDF, python-docx для DOCX)
+    3. Разбивка на чанки по 1000 символов с перекрытием 100
+    4. Сохранение чанков в PostgreSQL
+    5. Индексация в Elasticsearch (русский анализатор)
+
+    Статус документа меняется: `uploading` → `indexing` → `done` (или `error`).
+    """
     doc_type = _detect_type(file.filename or "", file.content_type)
 
     content = await file.read()
@@ -71,9 +96,8 @@ async def upload_document(
         uploaded_by=current_user.id,
     )
     session.add(doc)
-    await session.flush()  # получаем doc.id без коммита
+    await session.flush()
 
-    # --- BE-D2: извлечение текста ---
     try:
         pages = extract_text(content, doc_type.value)
         doc.status = DocumentStatus.indexing
@@ -84,7 +108,6 @@ async def upload_document(
         await session.commit()
         return DocumentItem.from_doc(doc, chunk_count=0)
 
-    # --- BE-D3: чанкинг ---
     text_chunks = chunk_pages(pages, doc.id)
     for tc in text_chunks:
         session.add(
@@ -100,7 +123,6 @@ async def upload_document(
     await session.commit()
     await session.refresh(doc)
 
-    # --- BE-S2: индексация чанков в Elasticsearch ---
     await es_svc.index_chunks(
         document_id=doc.id,
         file_name=doc.file_name,
@@ -112,12 +134,21 @@ async def upload_document(
     return DocumentItem.from_doc(doc, chunk_count=len(text_chunks))
 
 
-@router.get("", response_model=list[DocumentItem])
+@router.get(
+    "",
+    response_model=list[DocumentItem],
+    summary="Список документов",
+    response_description="Документы, отсортированные по дате загрузки (новые первыми)",
+    responses={401: _401},
+)
 async def list_documents(
     session: AsyncSession = Depends(get_session),
     _: UserPublic = Depends(get_current_user),
 ) -> list[DocumentItem]:
-    """Список документов. [BE-D4]."""
+    """Список всех документов в базе знаний.
+
+    Доступен всем авторизованным пользователям.
+    """
     result = await session.execute(
         select(Document, func.count(DocumentChunk.id).label("cnt"))
         .outerjoin(DocumentChunk, DocumentChunk.document_id == Document.id)
@@ -127,13 +158,19 @@ async def list_documents(
     return [DocumentItem.from_doc(row.Document, chunk_count=row.cnt) for row in result]
 
 
-@router.get("/{document_id}", response_model=DocumentItem)
+@router.get(
+    "/{document_id}",
+    response_model=DocumentItem,
+    summary="Документ по ID",
+    response_description="Метаданные документа и количество чанков",
+    responses={401: _401, 404: _404},
+)
 async def get_document(
     document_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     _: UserPublic = Depends(get_current_user),
 ) -> DocumentItem:
-    """Документ по id. [BE-D4]."""
+    """Получить метаданные конкретного документа по UUID."""
     doc = await session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
@@ -144,13 +181,19 @@ async def get_document(
     return DocumentItem.from_doc(doc, chunk_count=cnt)
 
 
-@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить документ",
+    response_description="Документ удалён (нет тела ответа)",
+    responses={401: _401, 403: _403, 404: _404},
+)
 async def delete_document(
     document_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     _: UserPublic = Depends(require_roles(UserRole.admin)),
 ) -> None:
-    """Удаление документа (только admin). [BE-D4]."""
+    """Удалить документ, его чанки и записи в Elasticsearch. Только для **admin**."""
     doc = await session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")

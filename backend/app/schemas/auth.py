@@ -14,6 +14,16 @@ from app.models.user import UserRole
 class DemoLoginRequest(BaseModel):
     role: UserRole
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"role": "student"},
+                {"role": "teacher"},
+                {"role": "admin"},
+            ]
+        }
+    }
+
 
 class UserPublic(BaseModel):
     """Публичное представление пользователя (ответ /auth/demo и /auth/me)."""
