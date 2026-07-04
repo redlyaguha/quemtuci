@@ -2,11 +2,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { DocBadge } from "../components/DocBadge";
-import { Highlight } from "../components/Highlight";
 import { Toast } from "../components/Toast";
-import { searchApi } from "../api";
-import { MOCK_CORPUS, SEARCH_HISTORY_SEED } from "../data/mock";
-import { localDocs } from "../data/localDocs";
+import { documentsApi, searchApi } from "../api";
 import { colors, roleMeta } from "../theme";
 import type { SearchResult, DocumentType, DocumentItem } from "../types";
 
@@ -27,15 +24,6 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "PDF", label: "PDF" },
   { key: "DOCX", label: "DOCX" },
 ];
-
-function localSearch(query: string): SearchResult[] {
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!tokens.length) return [];
-  return MOCK_CORPUS.filter((c) => {
-    const hay = `${c.text} ${c.doc}`.toLowerCase();
-    return tokens.some((t) => hay.includes(t));
-  }).sort((a, b) => b.rel - a.rel);
-}
 
 /** Строка «кто загрузил · группа · дата» под названием документа. */
 function uploaderLine(d: DocumentItem): string {
@@ -61,6 +49,8 @@ export default function KnowledgeBasePage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
 
   const openDoc = (d: DocumentItem) => {
     if (d.url) window.open(d.url, "_blank", "noopener");
@@ -88,11 +78,36 @@ export default function KnowledgeBasePage() {
       const res = await searchApi.search(q);
       setResults(res.results);
     } catch {
-      setResults(localSearch(q)); // backend не готов — локальный корпус
+      setResults([]);
+      setToast("Поиск недоступен");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let alive = true;
+    searchApi.history()
+      .then((items) => alive && setHistory(items))
+      .catch(() => {
+        if (alive) setHistory([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    documentsApi.list()
+      .then((items) => alive && setDocs(items))
+      .catch(() => {
+        if (alive) setDocs([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const submit = (value?: string) => {
     const q = (value ?? query).trim();
@@ -198,7 +213,7 @@ export default function KnowledgeBasePage() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, marginBottom: 8 }}>История запросов</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {SEARCH_HISTORY_SEED.map((h) => (
+            {history.map((h) => (
               <button
                 key={h}
                 onClick={() => submit(h)}
@@ -213,7 +228,7 @@ export default function KnowledgeBasePage() {
           {/* Документы базы знаний (включая загруженные) */}
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, margin: "20px 0 8px" }}>Документы базы знаний</div>
           <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "hidden" }}>
-            {localDocs.list().map((d, i, arr) => (
+            {docs.map((d, i, arr) => (
               <button
                 key={d.id}
                 onClick={() => openDoc(d)}
@@ -258,7 +273,7 @@ export default function KnowledgeBasePage() {
                     </div>
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.62, color: "#3A3C4A" }}>
-                    <Highlight text={r.text} query={activeQuery} />
+                    <span dangerouslySetInnerHTML={{ __html: r.text }} />
                   </div>
                 </div>
               );

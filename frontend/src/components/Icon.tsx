@@ -70,6 +70,7 @@ export function Icon({ name, size = 20, strokeWidth = 1.8, className }: IconProp
 export function queueTypeIcon(qtype: string): IconName {
   const map: Record<string, IconName> = {
     Защита: "defense",
+    practice_defense: "defense",
     Лабораторная: "lab",
     Консультация: "chat",
     Пересдача: "retry",

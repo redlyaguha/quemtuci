@@ -323,7 +323,7 @@ def test_leave_queue_recalculates_positions() -> None:
         with TestClient(app) as c:
             token = _token("student")
             resp = c.post("/api/v1/queues/1/leave", headers={"Authorization": f"Bearer {token}"})
-        assert resp.status_code == 204
+        assert resp.status_code == 200
         # m2 должен сдвинуться с position=2 на position=1
         assert m2.position == 1
     finally:
@@ -380,6 +380,55 @@ def test_reorder_owner_ok() -> None:
         app.dependency_overrides.pop(get_session, None)
 
 
+def test_complete_member_owner_ok() -> None:
+    m1 = _make_member(member_id=1, position=1, seq=1)
+    m2 = _make_member(member_id=2, student_id=uuid.uuid4(), position=2, seq=2)
+    queue = _make_queue(members=[m1, m2])
+    session = _mock_session(queue)
+
+    async def _override():
+        yield session
+
+    app.dependency_overrides[get_session] = _override
+    try:
+        with TestClient(app) as c:
+            token = _token("teacher")
+            resp = c.patch(
+                "/api/v1/queues/1/members/1/complete",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"grade": 5},
+            )
+        assert resp.status_code == 200
+        assert m1.passed is True
+        assert m1.grade == 5
+        assert m1.seq == 1
+        assert m2.position == 1
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+def test_complete_member_non_owner_forbidden() -> None:
+    m1 = _make_member(member_id=1, position=1, seq=1)
+    queue = _make_queue(members=[m1])
+    session = _mock_session(queue)
+
+    async def _override():
+        yield session
+
+    app.dependency_overrides[get_session] = _override
+    try:
+        with TestClient(app) as c:
+            token = _token("student")
+            resp = c.patch(
+                "/api/v1/queues/1/members/1/complete",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"grade": None},
+            )
+        assert resp.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
 # ── DELETE /queues/{id}/members/{mid} ────────────────────────────────────────
 
 def test_remove_member_non_owner_forbidden() -> None:
@@ -414,6 +463,34 @@ def test_remove_member_not_found() -> None:
             resp = c.delete("/api/v1/queues/1/members/999",
                             headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+def test_remove_member_returns_queue() -> None:
+    m1 = _make_member(member_id=1, position=1, seq=1)
+    m2 = _make_member(member_id=2, student_id=uuid.uuid4(), position=2, seq=2)
+    queue = _make_queue(members=[m1, m2])
+    session = _mock_session(queue)
+
+    async def _delete(obj):
+        queue.members = [m for m in queue.members if m.id != obj.id]
+
+    session.delete = _delete
+
+    async def _override():
+        yield session
+
+    app.dependency_overrides[get_session] = _override
+    try:
+        with TestClient(app) as c:
+            token = _token("teacher")
+            resp = c.delete(
+                "/api/v1/queues/1/members/1",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["students"][0]["id"] == 2
     finally:
         app.dependency_overrides.pop(get_session, None)
 

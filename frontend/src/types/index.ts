@@ -65,7 +65,7 @@ export interface SearchResponse {
 
 // ---------- Очереди ----------
 
-export type QueueType = "Лабораторная" | "Консультация" | "Защита" | "Пересдача";
+export type QueueType = "Лабораторная" | "Консультация" | "Защита" | "Пересдача" | "practice_defense";
 export type QueueStatus = "open" | "live" | "closed";
 
 export interface QueueMember {
