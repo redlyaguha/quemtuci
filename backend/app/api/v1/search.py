@@ -58,8 +58,8 @@ async def search(
     session.add(SearchHistory(user_id=current_user.id, query=query))
     await session.commit()
 
-    # BE-S5: проверяем кэш
-    cache_key = f"search:{query}:{size}"
+    # BE-S5: проверяем кэш (ключ включает user_id и role для изоляции доступа)
+    cache_key = f"search:{query}:{size}:{current_user.id}:{current_user.role}"
     cached = await cache_get(cache_key)
     if cached is not None:
         raw = cached
