@@ -8,11 +8,17 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, get_current_user
-from app.models.user import UserRole
-from app.schemas.auth import AuthResponse, DemoLoginRequest, UserPublic
+from app.db.session import get_session
+from app.models.integration import ExternalIntegration, IntegrationProvider, IntegrationStatus
+from app.models.user import User, UserRole
+from app.schemas.auth import AuthResponse, DemoLoginRequest, MtuciTokenLoginRequest, UserPublic
+from app.services.mtuci_tech_service import MtuciTechService
+from app.services.token_crypto import encrypt_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -76,10 +82,88 @@ async def me(current_user: UserPublic = Depends(get_current_user)) -> UserPublic
 
 @router.post(
     "/mtuci-token",
-    summary="Вход по токену МТУСИ (не реализован)",
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-    include_in_schema=False,
+    response_model=AuthResponse,
+    summary="Вход по токену МТУСИ",
+    response_description="JWT-токен и профиль локального пользователя",
+    responses={
+        400: {"description": "Пустой или недействительный MTUCI/TECH-токен"},
+    },
 )
-async def mtuci_token_login() -> dict:
-    """Вход по пользовательскому MTUCI/TECH-токену. TODO: [BE-M3]."""
-    raise NotImplementedError
+async def mtuci_token_login(
+    body: MtuciTokenLoginRequest,
+    session: AsyncSession = Depends(get_session),
+) -> AuthResponse:
+    """Вход по пользовательскому MTUCI/TECH-токену. [BE-M3]"""
+    token = body.token.strip()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пустой MTUCI-токен")
+
+    service = MtuciTechService()
+    try:
+        profile = await service.authenticate_by_token(token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    user = await _upsert_mtuci_user(session, profile)
+    public = _user_to_public(user)
+    await _upsert_mtuci_integration(session, user.id, token)
+    await session.commit()
+
+    return AuthResponse(access_token=create_access_token(public), user=public)
+
+
+async def _upsert_mtuci_user(session: AsyncSession, profile: dict) -> User:
+    mtuci_user_id = profile["mtuci_user_id"]
+    result = await session.execute(select(User).where(User.mtuci_user_id == mtuci_user_id))
+    user = result.scalars().first()
+
+    role = UserRole(profile.get("role") or UserRole.student.value)
+    if user is None:
+        user = User(full_name=profile["full_name"], role=role)
+        if profile.get("id") is not None:
+            user.id = profile["id"]
+        session.add(user)
+
+    user.full_name = profile["full_name"]
+    user.first_name = profile.get("first_name")
+    user.last_name = profile.get("last_name")
+    user.role = role
+    user.group_name = profile.get("group_name")
+    user.mtuci_user_id = mtuci_user_id
+    user.mtuci_role = profile.get("mtuci_role")
+    user.mtuci_group_id = profile.get("mtuci_group_id")
+    user.teacher_id = profile.get("teacher_id")
+    await session.flush()
+    return user
+
+
+async def _upsert_mtuci_integration(session: AsyncSession, user_id, token: str) -> None:
+    result = await session.execute(
+        select(ExternalIntegration).where(
+            ExternalIntegration.user_id == user_id,
+            ExternalIntegration.provider == IntegrationProvider.mtuci,
+        )
+    )
+    integration = result.scalars().first()
+    if integration is None:
+        integration = ExternalIntegration(
+            user_id=user_id,
+            provider=IntegrationProvider.mtuci,
+            encrypted_token=encrypt_token(token),
+            status=IntegrationStatus.connected,
+        )
+        session.add(integration)
+    else:
+        integration.encrypted_token = encrypt_token(token)
+        integration.status = IntegrationStatus.connected
+        integration.error_message = None
+
+
+def _user_to_public(user: User) -> UserPublic:
+    return UserPublic(
+        id=user.id,
+        name=user.full_name,
+        role=user.role,
+        group=user.group_name if user.role == UserRole.student else None,
+        department="Кафедра" if user.role == UserRole.teacher else None,
+    )
