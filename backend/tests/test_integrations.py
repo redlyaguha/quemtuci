@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +11,7 @@ from app.main import app
 from app.models.integration import ExternalIntegration, IntegrationProvider, IntegrationStatus
 from app.models.user import User
 from app.services.mtuci_tech_service import MtuciTechService
+from app.services.schedule_normalizer import normalize_exams, normalize_lessons
 from app.services.token_crypto import decrypt_token, encrypt_token
 
 
@@ -179,3 +179,77 @@ def test_mtuci_integration_status_sync_and_disconnect() -> None:
     assert sync_resp.json()["timetable_count"] == 2
     assert session.integration is None
     assert disconnect_resp.json()["connected"] is False
+
+
+def test_schedule_normalizer_filters_placeholders() -> None:
+    lessons = normalize_lessons([
+        {"date": "2026-07-06", "discipline": "--"},
+        {"date": "2026-07-06", "discipline": " Математика ", "teachers": "Иванов И.И."},
+    ])
+    exams = normalize_exams([
+        {"date": "2026-07-10", "discipline": ""},
+        {"date": "2026-07-10", "discipline": "Базы данных", "time_start": "12:00"},
+    ])
+
+    assert len(lessons) == 1
+    assert lessons[0]["discipline"] == "Математика"
+    assert lessons[0]["teachers"] == ["Иванов И.И."]
+    assert len(exams) == 1
+    assert exams[0]["discipline"] == "Базы данных"
+
+
+def test_schedule_endpoints_return_empty_without_integration() -> None:
+    session = _FakeSession(integration=None)
+
+    async def _override():
+        yield session
+
+    app.dependency_overrides[get_session] = _override
+    try:
+        with TestClient(app) as client:
+            token = client.post("/api/v1/auth/demo", json={"role": "student"}).json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            schedule_resp = client.get("/api/v1/schedule/my", headers=headers)
+            events_resp = client.get("/api/v1/schedule/events", headers=headers)
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert schedule_resp.status_code == 200
+    assert schedule_resp.json() == []
+    assert events_resp.status_code == 200
+    assert events_resp.json() == []
+
+
+def test_schedule_endpoints_return_normalized_mock_data() -> None:
+    integration = ExternalIntegration(
+        user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        provider=IntegrationProvider.mtuci,
+        encrypted_token=encrypt_token("mock-token"),
+        status=IntegrationStatus.connected,
+    )
+    session = _FakeSession(integration=integration)
+
+    async def _override():
+        yield session
+
+    app.dependency_overrides[get_session] = _override
+    try:
+        with TestClient(app) as client:
+            token = client.post("/api/v1/auth/demo", json={"role": "student"}).json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            schedule_resp = client.get("/api/v1/schedule/my", headers=headers)
+            events_resp = client.get("/api/v1/schedule/events", headers=headers)
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert schedule_resp.status_code == 200
+    lessons = schedule_resp.json()
+    assert len(lessons) == 1
+    assert lessons[0]["discipline"] == "Алгоритмы и структуры данных"
+
+    assert events_resp.status_code == 200
+    events = events_resp.json()
+    assert len(events) == 1
+    assert events[0]["discipline"] == "Базы данных"
