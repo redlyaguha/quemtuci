@@ -7,8 +7,7 @@ import { colors, font } from "../theme";
 import type { Queue, QueueCreate, QueueType } from "../types";
 
 /**
- * Модалка создания очереди (преподаватель). Пытается создать через API,
- * при недоступности backend собирает очередь локально, чтобы поток работал.
+ * Модалка создания очереди (преподаватель). Создаёт очередь через API.
  * `prefill` позволяет открыть форму с предзаполненными полями (используется
  * в FE-P2 для очереди защиты практики).
  */
@@ -28,12 +27,10 @@ const inputStyle: React.CSSProperties = {
 
 export function CreateQueueModal({
   prefill,
-  teacherName,
   onClose,
   onCreated,
 }: {
   prefill?: CreateQueuePrefill;
-  teacherName: string;
   onClose: () => void;
   onCreated: (queue: Queue) => void;
 }) {
@@ -69,14 +66,7 @@ export function CreateQueueModal({
       const created = await queuesApi.create(body);
       onCreated(created);
     } catch {
-      // backend не готов — создаём локально.
-      onCreated({
-        id: Date.now(),
-        ...body,
-        teacher: teacherName,
-        status: "open",
-        students: [],
-      });
+      setError("Не удалось создать очередь");
     } finally {
       setBusy(false);
     }

@@ -18,7 +18,7 @@ from app.db.session import get_session
 from app.models.queue import Queue, QueueMember, QueueStatus, QueueType
 from app.models.user import UserRole
 from app.schemas.auth import UserPublic
-from app.schemas.queues import QueueCreate, QueueMemberOut, QueueOut, ReorderRequest
+from app.schemas.queues import CompleteMemberRequest, QueueCreate, QueueMemberOut, QueueOut, ReorderRequest
 
 router = APIRouter(prefix="/queues", tags=["queues"])
 
@@ -210,9 +210,9 @@ async def join_queue(
 
 @router.post(
     "/{queue_id}/leave",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=QueueOut,
     summary="Выйти из очереди",
-    response_description="Выход выполнен, позиции пересчитаны (нет тела ответа)",
+    response_description="Очередь с пересчитанными позициями",
     responses={
         400: {"description": "Очередь уже закрыта"},
         401: _401,
@@ -224,7 +224,7 @@ async def leave_queue(
     queue_id: int,
     session: AsyncSession = Depends(get_session),
     current_user: UserPublic = Depends(require_roles(UserRole.student)),
-) -> None:
+) -> QueueOut:
     """Выйти из очереди, пересчитать позиции. [BE-Q3]"""
     queue = await _get_queue_or_404(session, queue_id)
 
@@ -243,6 +243,8 @@ async def leave_queue(
             m.position -= 1
 
     await session.commit()
+    await session.refresh(queue)
+    return _queue_to_out(queue)
 
 
 # ── BE-Q4: reorder / remove / close ──────────────────────────────────────────
@@ -279,13 +281,47 @@ async def reorder_members(
     await session.commit()
     await session.refresh(queue)
     return _queue_to_out(queue)
+    await session.refresh(queue)
+    return _queue_to_out(queue)
+
+
+@router.patch("/{queue_id}/members/{member_id}/complete", response_model=QueueOut)
+async def complete_member(
+    queue_id: int,
+    member_id: int,
+    body: CompleteMemberRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
+) -> QueueOut:
+    """Отметить студента сдавшим (только владелец/admin). [FE-INT]"""
+    queue = await _get_queue_or_404(session, queue_id)
+    _assert_owner(queue, current_user)
+
+    member = next((m for m in queue.members if m.id == member_id), None)
+    if not member:
+        raise HTTPException(status_code=404, detail="Участник не найден")
+    if member.passed:
+        raise HTTPException(status_code=400, detail="Участник уже отмечен сдавшим")
+
+    left_pos = member.position
+    member.passed = True
+    member.grade = body.grade
+    member.position = 0
+
+    active = [m for m in queue.members if not m.passed and m.position > left_pos]
+    for m in active:
+        m.position -= 1
+
+    await session.commit()
+    await session.refresh(queue)
+    return _queue_to_out(queue)
 
 
 @router.delete(
     "/{queue_id}/members/{member_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=QueueOut,
     summary="Удалить участника из очереди",
-    response_description="Участник удалён, позиции пересчитаны (нет тела ответа)",
+    response_description="Очередь с пересчитанными позициями",
     responses={401: _401, 403: _403, 404: _404},
 )
 async def remove_member(
@@ -293,7 +329,7 @@ async def remove_member(
     member_id: int,
     session: AsyncSession = Depends(get_session),
     current_user: UserPublic = Depends(get_current_user),
-) -> None:
+) -> QueueOut:
     """Удалить студента из очереди (только владелец/admin). [BE-Q4]"""
     queue = await _get_queue_or_404(session, queue_id)
     _assert_owner(queue, current_user)
@@ -309,6 +345,8 @@ async def remove_member(
             m.position -= 1
 
     await session.commit()
+    await session.refresh(queue)
+    return _queue_to_out(queue)
 
 
 @router.patch(
