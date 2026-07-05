@@ -24,10 +24,11 @@ def _make_docx_bytes(text: str = "Тестовый документ.") -> bytes:
 def client_mock_db():
     """TestClient с замоканной AsyncSession."""
     session = AsyncMock()
-    # flush и commit — no-op; get вернёт None по умолчанию (document not found).
+    # flush и commit — no-op; get вернёт None (документ/пользователь-uploader не найден).
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
+    session.get = AsyncMock(return_value=None)
     # add ничего не делает
     session.add = MagicMock()
 
@@ -77,16 +78,18 @@ def test_upload_requires_auth() -> None:
     assert resp.status_code == 401
 
 
-def test_upload_student_forbidden() -> None:
-    with TestClient(app) as c:
-        login = c.post("/api/v1/auth/demo", json={"role": "student"})
-        token = login.json()["access_token"]
-        resp = c.post(
-            "/api/v1/documents/upload",
-            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-    assert resp.status_code == 403
+def test_upload_allowed_for_any_authenticated_role(client_mock_db: TestClient) -> None:
+    """Загрузка доступна всем авторизованным ролям (не только admin)."""
+    login = client_mock_db.post("/api/v1/auth/demo", json={"role": "student"})
+    token = login.json()["access_token"]
+    docx_bytes = _make_docx_bytes("Студенческий документ.")
+    resp = client_mock_db.post(
+        "/api/v1/documents/upload",
+        files={"file": ("student.docx", docx_bytes,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
 
 
 def test_upload_valid_docx_accepted(client_mock_db: TestClient) -> None:
