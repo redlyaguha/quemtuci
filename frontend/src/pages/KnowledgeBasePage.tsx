@@ -1,0 +1,363 @@
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Icon } from "../components/Icon";
+import { DocBadge } from "../components/DocBadge";
+import { Toast } from "../components/Toast";
+import { documentsApi, searchApi } from "../api";
+import { colors, roleMeta } from "../theme";
+import { formatWhen } from "../format";
+import type { SearchResult, DocumentType, DocumentItem } from "../types";
+
+/**
+ * База знаний — полнотекстовый поиск по документам [FE-04].
+ * Поиск по кнопке и Enter, карточки результатов с подсветкой запроса,
+ * пагинация по 10, пустое состояние. Запрос можно передать через ?q=.
+ *
+ * Пока backend `/search` ([BE-S3]) не готов — поиск идёт по локальному
+ * корпусу демо-данных; при готовности API используется он.
+ */
+
+const PAGE_SIZE = 10;
+type Filter = "all" | "PDF" | "DOCX";
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: "all", label: "Все" },
+  { key: "PDF", label: "PDF" },
+  { key: "DOCX", label: "DOCX" },
+];
+
+/** Строка «кто загрузил · группа · дата» под названием документа. */
+function uploaderLine(d: DocumentItem): string {
+  const role = d.uploaderRole ? roleMeta[d.uploaderRole].label : null;
+  const who = role ? (d.uploaderName ? `${role} (${d.uploaderName})` : role) : null;
+  const parts = [who, d.uploaderGroup, d.date ? formatWhen(d.date) : null].filter(Boolean);
+  return parts.length ? `Загрузил: ${parts.join(" · ")}` : "Сведения о загрузке недоступны";
+}
+
+function relMeta(rel: number) {
+  const pct = Math.round(rel * 100);
+  const color = pct >= 90 ? colors.success : pct >= 75 ? colors.warning : colors.textMuted;
+  return { pct, color };
+}
+
+export default function KnowledgeBasePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [activeQuery, setActiveQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [page, setPage] = useState(1);
+  const [toast, setToast] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
+
+  const openDoc = (d: DocumentItem) => {
+    if (d.url) window.open(d.url, "_blank", "noopener");
+    else setToast("Файл доступен после интеграции с хранилищем");
+  };
+
+  const downloadDoc = async (d: DocumentItem) => {
+    try {
+      await documentsApi.download(d.id, d.name);
+    } catch {
+      setToast("Не удалось скачать файл");
+    }
+  };
+
+  /** Сброс поиска — возврат к списку документов (выход из состояния «ничего не найдено»). */
+  const resetSearch = () => {
+    setSearched(false);
+    setResults([]);
+    setActiveQuery("");
+    setQuery("");
+    setPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const runSearch = async (value: string) => {
+    const q = value.trim();
+    if (!q) return;
+    setActiveQuery(q);
+    setSearched(true);
+    setPage(1);
+    setLoading(true);
+    try {
+      const res = await searchApi.search(q);
+      setResults(res.results);
+    } catch {
+      setResults([]);
+      setToast("Поиск недоступен");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    searchApi.history()
+      .then((items) => alive && setHistory(items))
+      .catch(() => {
+        if (alive) setHistory([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    documentsApi.list()
+      .then((items) => alive && setDocs(items))
+      .catch(() => {
+        if (alive) setDocs([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const submit = (value?: string) => {
+    const q = (value ?? query).trim();
+    if (!q) return;
+    setQuery(q);
+    setSearchParams(q ? { q } : {}, { replace: true });
+    runSearch(q);
+  };
+
+  // Автозапуск поиска по ?q= (например, переход из дашборда).
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && q !== activeQuery) {
+      setQuery(q);
+      runSearch(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const filtered = filter === "all" ? results : results.filter((r) => r.type === (filter as DocumentType));
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <div style={{ animation: "fadeUp .3s both", maxWidth: 840 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.5px", margin: "0 0 14px" }}>
+        База знаний
+      </h1>
+
+      {/* Поисковая строка */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 14,
+            padding: "0 14px",
+          }}
+        >
+          <span style={{ color: colors.textFaint }}>
+            <Icon name="search" size={17} />
+          </span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="Искать по содержанию документов…"
+            style={{ flex: 1, border: "none", background: "none", padding: "14px 0", fontSize: 15 }}
+          />
+          {(query || searched) && (
+            <button
+              onClick={resetSearch}
+              title="Очистить"
+              style={{ background: "none", border: "none", cursor: "pointer", color: colors.textFaint, padding: 6, display: "flex", flex: "0 0 auto" }}
+            >
+              <Icon name="x" size={16} />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => submit()}
+          style={{ background: colors.primary, color: "#fff", border: "none", borderRadius: 14, padding: "0 24px", fontWeight: 600, fontSize: 15, cursor: "pointer" }}
+        >
+          Найти
+        </button>
+      </div>
+
+      {/* Фильтры */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center", marginBottom: 18 }}>
+        <span style={{ fontSize: 12.5, color: colors.textFaint, marginRight: 2 }}>Фильтры:</span>
+        {FILTERS.map((f) => {
+          const on = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => {
+                setFilter(f.key);
+                setPage(1);
+              }}
+              style={{
+                background: on ? colors.primary : colors.surface,
+                color: on ? "#fff" : colors.textSoft,
+                border: `1px solid ${on ? colors.primary : colors.border}`,
+                borderRadius: 999,
+                padding: "8px 15px",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* История (до первого поиска) */}
+      {!searched && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, marginBottom: 8 }}>История запросов</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {history.map((h) => (
+              <button
+                key={h}
+                onClick={() => submit(h)}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: "7px 13px", fontSize: 13, color: colors.textSoft, cursor: "pointer" }}
+              >
+                <Icon name="clock" size={14} />
+                {h}
+              </button>
+            ))}
+          </div>
+
+          {/* Документы базы знаний (включая загруженные) */}
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, margin: "20px 0 8px" }}>Документы базы знаний</div>
+          <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "hidden" }}>
+            {docs.map((d, i, arr) => (
+              <div
+                key={d.id}
+                style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${colors.borderMuted}` : "none" }}
+              >
+                <button
+                  onClick={() => openDoc(d)}
+                  title="Открыть документ"
+                  style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+                >
+                  <DocBadge type={d.type} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                    <div style={{ fontSize: 11.5, color: colors.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {uploaderLine(d)}
+                    </div>
+                  </div>
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
+                  <button
+                    onClick={() => openDoc(d)}
+                    style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "6px 4px" }}
+                  >
+                    Открыть
+                  </button>
+                  <button
+                    onClick={() => downloadDoc(d)}
+                    title="Скачать файл"
+                    style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: colors.textSoft, fontWeight: 600, background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: 9, padding: "7px 11px", cursor: "pointer" }}
+                  >
+                    <Icon name="download" size={14} />
+                    Скачать
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Результаты */}
+      {searched && !loading && filtered.length > 0 && (
+        <div>
+          <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
+            Найдено {filtered.length} фрагментов по запросу «{activeQuery}»
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {paged.map((r, i) => {
+              const rel = relMeta(r.rel);
+              return (
+                <div key={`${r.doc}-${r.page}-${i}`} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 9 }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                      <DocBadge type={r.type} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.doc}</div>
+                        <div style={{ fontSize: 12, color: colors.textFaint }}>Страница {r.page}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: rel.color }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: rel.color }}>{rel.pct}%</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14, lineHeight: 1.62, color: "#3A3C4A" }}>
+                    <span dangerouslySetInnerHTML={{ __html: r.text }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Пагинация */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 22 }}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    border: `1px solid ${page === p ? colors.primary : colors.border}`,
+                    background: page === p ? colors.primary : colors.surface,
+                    color: page === p ? "#fff" : colors.textSoft,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Пустое состояние */}
+      {searched && !loading && filtered.length === 0 && (
+        <div style={{ background: colors.surface, border: `1px dashed #D7DAE6`, borderRadius: 18, padding: "54px 30px", textAlign: "center", animation: "fadeUp .3s both" }}>
+          <div style={{ width: 60, height: 60, borderRadius: 16, background: colors.surfaceMuted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#B4B7C6" }}>
+            <Icon name="search" size={26} />
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700 }}>По вашему запросу ничего не найдено</div>
+          <div style={{ fontSize: 14, color: colors.textMuted, marginTop: 6, maxWidth: 360, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55 }}>
+            Попробуйте изменить формулировку, убрать лишние слова или использовать синонимы.
+          </div>
+          <button
+            onClick={resetSearch}
+            style={{ marginTop: 18, background: colors.primary, color: "#fff", border: "none", borderRadius: 12, padding: "11px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          >
+            Вернуться к документам
+          </button>
+        </div>
+      )}
+
+      {loading && <div style={{ color: colors.textMuted, fontSize: 14, padding: "20px 0" }}>Поиск…</div>}
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+    </div>
+  );
+}
