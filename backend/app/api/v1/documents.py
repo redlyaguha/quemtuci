@@ -218,11 +218,16 @@ async def download_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Файл недоступен для скачивания (загружен до включения хранения)",
         )
-    filename = quote(doc.file_name)
+    # RFC 5987: filename* для UTF-8 + ASCII-fallback filename для старых клиентов.
+    ext = doc.file_name.rsplit(".", 1)[-1] if "." in doc.file_name else ""
+    ascii_fallback = f"document.{ext}" if ext else "document"
+    utf8_name = quote(doc.file_name)
     return Response(
         content=doc.content,
         media_type=_MIME_BY_TYPE.get(doc.file_type, "application/octet-stream"),
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{utf8_name}",
+        },
     )
 
 
@@ -238,12 +243,20 @@ async def download_document(
 async def delete_document(
     document_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _: UserPublic = Depends(require_roles(UserRole.admin, UserRole.teacher)),
+    current_user: UserPublic = Depends(require_roles(UserRole.admin, UserRole.teacher)),
 ) -> None:
-    """Удалить документ, его чанки и записи в Elasticsearch. Для **admin** и **teacher**."""
+    """Удалить документ, его чанки и записи в Elasticsearch.
+
+    **admin** — любой документ; **teacher** — только свои загрузки.
+    """
     doc = await session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
+    if current_user.role == UserRole.teacher and doc.uploaded_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Преподаватель может удалять только свои загрузки",
+        )
     await session.delete(doc)
     await session.commit()
     await es_svc.delete_document_chunks(document_id)
