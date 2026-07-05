@@ -13,6 +13,7 @@ python-multipart
 cryptography
 python-jose[cryptography]
 passlib[bcrypt]
+prometheus-fastapi-instrumentator
 httpx
 requests
 pytest

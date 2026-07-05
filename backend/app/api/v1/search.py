@@ -6,7 +6,7 @@ BE-S5: Redis-кэш результатов ES (TTL 5 мин).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -121,6 +121,8 @@ async def search_history(
 @router.delete(
     "/history",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
     summary="Очистить историю поиска",
     response_description="История удалена (нет тела ответа)",
     responses={401: _401},
