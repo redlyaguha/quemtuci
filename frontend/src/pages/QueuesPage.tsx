@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon, queueTypeIcon } from "../components/Icon";
+import { Icon, queueTypeIcon, queueTypeLabel } from "../components/Icon";
+import { formatWhen } from "../format";
 import { StatusChip } from "../components/StatusChip";
 import { CreateQueueModal, type CreateQueuePrefill } from "../components/CreateQueueModal";
 import { useAuth } from "../hooks/useAuth";
@@ -128,7 +129,7 @@ export default function QueuesPage() {
               </div>
               <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-.2px" }}>{q.title}</div>
               <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
-                {q.discipline} · {q.qtype}
+                {q.discipline === q.title ? queueTypeLabel(q.qtype) : `${q.discipline} · ${queueTypeLabel(q.qtype)}`}
               </div>
               <div style={{ borderTop: `1px solid ${colors.borderMuted}`, marginTop: 13, paddingTop: 12, display: "flex", flexDirection: "column", gap: 7, fontSize: 13, color: colors.textSoft }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -141,7 +142,7 @@ export default function QueuesPage() {
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Icon name="cal" size={15} />
-                  {q.when}
+                  {formatWhen(q.when)}
                 </span>
               </div>
               <div style={{ marginTop: 13, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

@@ -7,11 +7,12 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, LargeBinary, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.user import User
 
 
 class DocumentStatus(str, enum.Enum):
@@ -31,7 +32,10 @@ class Document(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    file_type: Mapped[DocumentType] = mapped_column(Enum(DocumentType, name="document_type"), nullable=False)
+    file_type: Mapped[DocumentType] = mapped_column(
+        Enum(DocumentType, name="document_type", values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+    )
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[DocumentStatus] = mapped_column(
         Enum(DocumentStatus, name="document_status"),
@@ -46,9 +50,15 @@ class Document(Base):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     error_message: Mapped[str | None] = mapped_column(Text)
 
+    # Оригинальные байты файла — для скачивания из базы знаний [FE-DL].
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
     chunks: Mapped[list["DocumentChunk"]] = relationship(
         "DocumentChunk", back_populates="document", cascade="all, delete-orphan"
     )
+    # Загружается явно в эндпоинтах (join / session.get), а не через ORM-relationship,
+    # чтобы не ломать агрегирующий запрос списка. lazy по умолчанию (select).
+    uploader: Mapped["User | None"] = relationship("User")
 
 
 class DocumentChunk(Base):

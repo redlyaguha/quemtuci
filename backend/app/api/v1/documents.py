@@ -8,19 +8,25 @@ BE-D4: GET /, GET /{id}, DELETE /{id}.
 from __future__ import annotations
 
 import uuid
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user, require_roles
 from app.db.session import get_session
 from app.models.document import Document, DocumentChunk, DocumentStatus, DocumentType
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from app.schemas.auth import UserPublic
 from app.schemas.documents import DocumentItem
 from app.services import elasticsearch_service as es_svc
 from app.services.document_parser import ParserError, chunk_pages, extract_text
+
+_MIME_BY_TYPE = {
+    DocumentType.pdf: "application/pdf",
+    DocumentType.docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -57,15 +63,14 @@ def _detect_type(filename: str, content_type: str | None) -> DocumentType:
     responses={
         400: {"description": "Неверный формат файла, превышен лимит 20 МБ или файл пустой"},
         401: _401,
-        403: _403,
     },
 )
 async def upload_document(
     file: UploadFile,
     session: AsyncSession = Depends(get_session),
-    current_user: UserPublic = Depends(require_roles(UserRole.admin)),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> DocumentItem:
-    """Загрузка PDF или DOCX файла в базу знаний. Только для **admin**.
+    """Загрузка PDF или DOCX файла в базу знаний. Доступна всем авторизованным.
 
     Пайплайн обработки:
     1. Валидация типа файла (Content-Type / расширение) и размера (≤ 20 МБ)
@@ -94,9 +99,12 @@ async def upload_document(
         file_size=len(content),
         status=DocumentStatus.uploading,
         uploaded_by=current_user.id,
+        content=content,
     )
     session.add(doc)
     await session.flush()
+
+    uploader = await session.get(User, current_user.id)
 
     try:
         pages = extract_text(content, doc_type.value)
@@ -106,7 +114,7 @@ async def upload_document(
         doc.status = DocumentStatus.error
         doc.error_message = str(exc)
         await session.commit()
-        return DocumentItem.from_doc(doc, chunk_count=0)
+        return DocumentItem.from_doc(doc, chunk_count=0, uploader=uploader)
 
     text_chunks = chunk_pages(pages, doc.id)
     for tc in text_chunks:
@@ -131,7 +139,7 @@ async def upload_document(
                 for tc in text_chunks],
     )
 
-    return DocumentItem.from_doc(doc, chunk_count=len(text_chunks))
+    return DocumentItem.from_doc(doc, chunk_count=len(text_chunks), uploader=uploader)
 
 
 @router.get(
@@ -142,20 +150,25 @@ async def upload_document(
     responses={401: _401},
 )
 async def list_documents(
+    mine: bool = Query(False, description="Только документы, загруженные текущим пользователем"),
     session: AsyncSession = Depends(get_session),
-    _: UserPublic = Depends(get_current_user),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> list[DocumentItem]:
-    """Список всех документов в базе знаний.
+    """Список документов базы знаний с информацией о загрузившем.
 
-    Доступен всем авторизованным пользователям.
+    Доступен всем авторизованным. При `mine=true` — только свои загрузки.
     """
-    result = await session.execute(
-        select(Document, func.count(DocumentChunk.id).label("cnt"))
+    stmt = (
+        select(Document, func.count(DocumentChunk.id).label("cnt"), User)
         .outerjoin(DocumentChunk, DocumentChunk.document_id == Document.id)
-        .group_by(Document.id)
+        .outerjoin(User, User.id == Document.uploaded_by)
+        .group_by(Document.id, User.id)
         .order_by(Document.uploaded_at.desc())
     )
-    return [DocumentItem.from_doc(row.Document, chunk_count=row.cnt) for row in result]
+    if mine:
+        stmt = stmt.where(Document.uploaded_by == current_user.id)
+    result = await session.execute(stmt)
+    return [DocumentItem.from_doc(row.Document, chunk_count=row.cnt, uploader=row.User) for row in result]
 
 
 @router.get(
@@ -178,7 +191,39 @@ async def get_document(
         select(func.count(DocumentChunk.id)).where(DocumentChunk.document_id == document_id)
     )
     cnt = cnt_result.scalar_one()
-    return DocumentItem.from_doc(doc, chunk_count=cnt)
+    uploader = await session.get(User, doc.uploaded_by) if doc.uploaded_by else None
+    return DocumentItem.from_doc(doc, chunk_count=cnt, uploader=uploader)
+
+
+@router.get(
+    "/{document_id}/download",
+    summary="Скачать документ",
+    response_description="Оригинальный файл (PDF/DOCX)",
+    responses={
+        401: _401,
+        404: {"description": "Документ не найден или файл не сохранён"},
+    },
+)
+async def download_document(
+    document_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    _: UserPublic = Depends(get_current_user),
+) -> Response:
+    """Скачать оригинальный файл документа. Доступно всем авторизованным."""
+    doc = await session.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
+    if doc.content is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Файл недоступен для скачивания (загружен до включения хранения)",
+        )
+    filename = quote(doc.file_name)
+    return Response(
+        content=doc.content,
+        media_type=_MIME_BY_TYPE.get(doc.file_type, "application/octet-stream"),
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+    )
 
 
 @router.delete(
@@ -193,9 +238,9 @@ async def get_document(
 async def delete_document(
     document_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
-    _: UserPublic = Depends(require_roles(UserRole.admin)),
+    _: UserPublic = Depends(require_roles(UserRole.admin, UserRole.teacher)),
 ) -> None:
-    """Удалить документ, его чанки и записи в Elasticsearch. Только для **admin**."""
+    """Удалить документ, его чанки и записи в Elasticsearch. Для **admin** и **teacher**."""
     doc = await session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")

@@ -3,10 +3,25 @@ import type { DocumentItem } from "../types";
 
 /** Документы. Контракт backend — [BE-D1]..[BE-D4]. Экраны — [FE-03]. */
 export const documentsApi = {
-  list: () => api.get<DocumentItem[]>("/documents").then((r) => r.data),
+  /** Список документов. `mine` — только загруженные текущим пользователем. */
+  list: (mine = false) =>
+    api.get<DocumentItem[]>("/documents", { params: mine ? { mine: true } : undefined }).then((r) => r.data),
 
   get: (id: string | number) =>
     api.get<DocumentItem>(`/documents/${id}`).then((r) => r.data),
+
+  /** Скачать оригинальный файл: сохраняет blob под именем документа. */
+  download: async (id: string | number, name: string) => {
+    const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });
+    const href = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
+  },
 
   upload: (file: File, onUploadProgress?: (percent: number) => void) => {
     const form = new FormData();

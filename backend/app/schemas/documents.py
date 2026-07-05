@@ -19,14 +19,19 @@ class DocumentItem(BaseModel):
     size: str | None = None
     frags: int | None = None
     error_message: str | None = None
+    uploaderName: str | None = None
+    uploaderRole: str | None = None
+    uploaderGroup: str | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_doc(cls, doc: object, chunk_count: int = 0) -> "DocumentItem":
+    def from_doc(cls, doc: object, chunk_count: int = 0, uploader: object | None = None) -> "DocumentItem":
         from app.models.document import Document
+        from app.models.user import User, UserRole
 
         d: Document = doc  # type: ignore[assignment]
+        u: User | None = uploader  # type: ignore[assignment]
         return cls(
             id=d.id,
             name=d.file_name,
@@ -36,6 +41,9 @@ class DocumentItem(BaseModel):
             size=_human_size(d.file_size),
             frags=chunk_count,
             error_message=d.error_message,
+            uploaderName=u.full_name if u else None,
+            uploaderRole=u.role.value if u else None,
+            uploaderGroup=u.group_name if (u and u.role == UserRole.student) else None,
         )
 
 

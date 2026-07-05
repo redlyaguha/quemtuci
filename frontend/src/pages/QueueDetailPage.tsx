@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Icon, queueTypeIcon } from "../components/Icon";
+import { Icon, queueTypeIcon, queueTypeLabel } from "../components/Icon";
+import { formatWhen } from "../format";
 import { StatusChip } from "../components/StatusChip";
 import { Toast } from "../components/Toast";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -130,7 +131,7 @@ export default function QueueDetailPage() {
             <div>
               <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.5px", margin: 0 }}>{queue.title}</h2>
               <div style={{ fontSize: 13.5, color: colors.textMuted, marginTop: 3 }}>
-                {queue.discipline} · {queue.qtype}
+                {queue.discipline === queue.title ? queueTypeLabel(queue.qtype) : `${queue.discipline} · ${queueTypeLabel(queue.qtype)}`}
               </div>
             </div>
           </div>
@@ -141,7 +142,7 @@ export default function QueueDetailPage() {
           <InfoCell label="Преподаватель" value={queue.teacher} />
           <InfoCell label="Аудитория" value={queue.room} />
           <InfoCell label="Группа" value={queue.group} />
-          <InfoCell label="Дата и время" value={queue.when} />
+          <InfoCell label="Дата и время" value={formatWhen(queue.when)} />
         </div>
 
         {queue.comment && (

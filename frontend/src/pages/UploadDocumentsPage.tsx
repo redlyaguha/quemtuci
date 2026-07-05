@@ -6,6 +6,7 @@ import { Toast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
 import { documentsApi } from "../api";
 import { colors } from "../theme";
+import { formatWhen } from "../format";
 import type { DocumentItem, DocumentType, DocumentStatus } from "../types";
 
 /**
@@ -52,11 +53,11 @@ export default function UploadDocumentsPage() {
   const [toast, setToast] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Начальный список документов из API.
+  // Начальный список документов из API — только загруженные текущим пользователем.
   useEffect(() => {
     let alive = true;
     documentsApi
-      .list()
+      .list(true)
       .then((d) => alive && setDocs(d))
       .catch(() => alive && setToast("Не удалось загрузить список документов"));
     return () => {
@@ -261,7 +262,7 @@ export default function UploadDocumentsPage() {
                   {d.name}
                 </button>
               </div>
-              <div style={{ width: 120, color: colors.textMuted }}>{d.date ?? "—"}</div>
+              <div style={{ width: 120, color: colors.textMuted }}>{d.date ? formatWhen(d.date) : "—"}</div>
               <div style={{ width: 90, color: colors.textMuted }}>{d.size ?? "—"}</div>
               <div style={{ width: 110, color: colors.textMuted }}>{d.frags || "—"}</div>
               <div style={{ width: 110 }}>

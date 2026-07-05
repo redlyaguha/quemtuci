@@ -14,7 +14,7 @@ from app.models.queue import Queue, QueueStatus, QueueType
 from app.models.user import UserRole
 from app.schemas.queues import QueueOut
 from app.schemas.auth import UserPublic
-from app.api.v1.queues import _queue_to_out
+from app.api.v1.queues import _serialize_queue
 from app.services.mtuci_tech_service import MtuciTechService
 from app.services.schedule_normalizer import normalize_exams, normalize_lessons
 from app.services.token_crypto import decrypt_token
@@ -86,7 +86,7 @@ async def create_practice_defense_queue(
         await session.commit()
         await session.refresh(queue)
 
-    return _queue_to_out(queue, teacher_name=current_user.name)
+    return await _serialize_queue(session, queue)
 
 
 async def _get_mtuci_integration(session: AsyncSession, user_id) -> ExternalIntegration | None:

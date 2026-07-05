@@ -38,7 +38,10 @@ class Queue(Base):
     date: Mapped[date] = mapped_column(Date, nullable=False)
     time_start: Mapped[time] = mapped_column(Time, nullable=False)
     time_end: Mapped[time | None] = mapped_column(Time, nullable=True)
-    type: Mapped[QueueType] = mapped_column(Enum(QueueType, name="queue_type"), nullable=False)
+    type: Mapped[QueueType] = mapped_column(
+        Enum(QueueType, name="queue_type", values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+    )
     status: Mapped[QueueStatus] = mapped_column(
         Enum(QueueStatus, name="queue_status"), nullable=False, default=QueueStatus.open
     )

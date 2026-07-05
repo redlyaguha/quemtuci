@@ -4,7 +4,7 @@ pydantic-settings
 sqlalchemy[asyncio]
 asyncpg
 alembic
-elasticsearch
+elasticsearch>=8.13,<9
 aiohttp
 redis
 pdfplumber
