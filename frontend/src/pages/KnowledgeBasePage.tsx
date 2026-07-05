@@ -5,6 +5,7 @@ import { DocBadge } from "../components/DocBadge";
 import { Toast } from "../components/Toast";
 import { documentsApi, searchApi } from "../api";
 import { colors, roleMeta } from "../theme";
+import { formatWhen } from "../format";
 import type { SearchResult, DocumentType, DocumentItem } from "../types";
 
 /**
@@ -29,7 +30,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 function uploaderLine(d: DocumentItem): string {
   const role = d.uploaderRole ? roleMeta[d.uploaderRole].label : null;
   const who = role ? (d.uploaderName ? `${role} (${d.uploaderName})` : role) : null;
-  const parts = [who, d.uploaderGroup, d.date].filter(Boolean);
+  const parts = [who, d.uploaderGroup, d.date ? formatWhen(d.date) : null].filter(Boolean);
   return parts.length ? `Загрузил: ${parts.join(" · ")}` : "Сведения о загрузке недоступны";
 }
 
@@ -55,6 +56,14 @@ export default function KnowledgeBasePage() {
   const openDoc = (d: DocumentItem) => {
     if (d.url) window.open(d.url, "_blank", "noopener");
     else setToast("Файл доступен после интеграции с хранилищем");
+  };
+
+  const downloadDoc = async (d: DocumentItem) => {
+    try {
+      await documentsApi.download(d.id, d.name);
+    } catch {
+      setToast("Не удалось скачать файл");
+    }
   };
 
   /** Сброс поиска — возврат к списку документов (выход из состояния «ничего не найдено»). */
@@ -229,20 +238,40 @@ export default function KnowledgeBasePage() {
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSoft, margin: "20px 0 8px" }}>Документы базы знаний</div>
           <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "hidden" }}>
             {docs.map((d, i, arr) => (
-              <button
+              <div
                 key={d.id}
-                onClick={() => openDoc(d)}
-                style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${colors.borderMuted}` : "none", cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderBottom: i < arr.length - 1 ? `1px solid ${colors.borderMuted}` : "none" }}
               >
-                <DocBadge type={d.type} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                  <div style={{ fontSize: 11.5, color: colors.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {uploaderLine(d)}
+                <button
+                  onClick={() => openDoc(d)}
+                  title="Открыть документ"
+                  style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+                >
+                  <DocBadge type={d.type} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                    <div style={{ fontSize: 11.5, color: colors.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {uploaderLine(d)}
+                    </div>
                   </div>
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
+                  <button
+                    onClick={() => openDoc(d)}
+                    style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "6px 4px" }}
+                  >
+                    Открыть
+                  </button>
+                  <button
+                    onClick={() => downloadDoc(d)}
+                    title="Скачать файл"
+                    style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: colors.textSoft, fontWeight: 600, background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: 9, padding: "7px 11px", cursor: "pointer" }}
+                  >
+                    <Icon name="download" size={14} />
+                    Скачать
+                  </button>
                 </div>
-                <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, flex: "0 0 auto" }}>Открыть →</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>

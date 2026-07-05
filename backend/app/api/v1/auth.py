@@ -103,6 +103,11 @@ async def mtuci_token_login(
         profile = await service.authenticate_by_token(token)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except NotImplementedError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Живая интеграция MTUCI/TECH не настроена",
+        )
 
     user = await _upsert_mtuci_user(session, profile)
     public = _user_to_public(user)

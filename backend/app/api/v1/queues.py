@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user, require_roles
 from app.db.session import get_session
 from app.models.queue import Queue, QueueMember, QueueStatus, QueueType
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from app.schemas.auth import UserPublic
 from app.schemas.queues import CompleteMemberRequest, QueueCreate, QueueMemberOut, QueueOut, ReorderRequest
 
@@ -29,10 +29,11 @@ _404 = {"description": "Очередь или участник не найден
 
 # ── хелперы ──────────────────────────────────────────────────────────────────
 
-def _member_to_out(m: QueueMember) -> QueueMemberOut:
+def _member_to_out(m: QueueMember, names: dict[uuid.UUID, str]) -> QueueMemberOut:
     return QueueMemberOut(
         id=m.id,
         userId=m.student_id,
+        name=names.get(m.student_id, ""),
         seq=m.seq,
         position=m.position,
         passed=m.passed,
@@ -40,21 +41,31 @@ def _member_to_out(m: QueueMember) -> QueueMemberOut:
     )
 
 
-def _queue_to_out(queue: Queue, teacher_name: str = "") -> QueueOut:
-    when = f"{queue.date}T{queue.time_start}"
+async def _names_for(session: AsyncSession, user_ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
+    """Карта id → полное имя для преподавателя и участников очереди."""
+    ids = {i for i in user_ids if i is not None}
+    if not ids:
+        return {}
+    rows = await session.execute(select(User.id, User.full_name).where(User.id.in_(ids)))
+    return {row.id: row.full_name for row in rows}
+
+
+async def _serialize_queue(session: AsyncSession, queue: Queue) -> QueueOut:
+    """Собрать QueueOut, подтянув имена преподавателя и участников из users."""
+    names = await _names_for(session, {queue.teacher_id, *(m.student_id for m in queue.members)})
     return QueueOut(
         id=queue.id,
         title=queue.title,
         discipline=queue.discipline,
         qtype=queue.type.value,
-        teacher=teacher_name,
+        teacher=names.get(queue.teacher_id, ""),
         room=queue.room,
         group=queue.group_name,
-        when=when,
+        when=f"{queue.date}T{queue.time_start}",
         max=queue.max_students,
         status=queue.status.value,
         comment=queue.comment,
-        students=[_member_to_out(m) for m in sorted(queue.members, key=lambda m: m.position)],
+        students=[_member_to_out(m, names) for m in sorted(queue.members, key=lambda m: m.position)],
     )
 
 
@@ -110,7 +121,7 @@ async def list_queues(
         stmt = stmt.where(and_(*filters))
     result = await session.execute(stmt)
     queues = result.scalars().unique().all()
-    return [_queue_to_out(q) for q in queues]
+    return [await _serialize_queue(session, q) for q in queues]
 
 
 @router.post(
@@ -144,7 +155,7 @@ async def create_queue(
     session.add(queue)
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue, teacher_name=current_user.name)
+    return await _serialize_queue(session, queue)
 
 
 @router.get(
@@ -160,7 +171,7 @@ async def get_queue(
     _: UserPublic = Depends(get_current_user),
 ) -> QueueOut:
     """Детали очереди. [BE-Q2]"""
-    return _queue_to_out(await _get_queue_or_404(session, queue_id))
+    return await _serialize_queue(session, await _get_queue_or_404(session, queue_id))
 
 
 # ── BE-Q3: join / leave ───────────────────────────────────────────────────────
@@ -205,7 +216,7 @@ async def join_queue(
     session.add(member)
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)
 
 
 @router.post(
@@ -244,7 +255,7 @@ async def leave_queue(
 
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)
 
 
 # ── BE-Q4: reorder / remove / close ──────────────────────────────────────────
@@ -280,9 +291,7 @@ async def reorder_members(
 
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
-    await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)
 
 
 @router.patch("/{queue_id}/members/{member_id}/complete", response_model=QueueOut)
@@ -314,7 +323,7 @@ async def complete_member(
 
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)
 
 
 @router.delete(
@@ -346,7 +355,7 @@ async def remove_member(
 
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)
 
 
 @router.patch(
@@ -376,4 +385,4 @@ async def close_queue(
     queue.status = QueueStatus.closed
     await session.commit()
     await session.refresh(queue)
-    return _queue_to_out(queue)
+    return await _serialize_queue(session, queue)

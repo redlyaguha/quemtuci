@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon, queueTypeIcon } from "../components/Icon";
+import { formatWhen } from "../format";
 import { StatCard } from "../components/StatCard";
 import { StatusChip } from "../components/StatusChip";
 import { DocBadge } from "../components/DocBadge";
@@ -200,7 +201,7 @@ function QueueRow({ q, onOpen, currentUserId }: { q: Queue; onOpen: () => void; 
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <Icon name="cal" size={15} />
-          {q.when}
+          {formatWhen(q.when)}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <Icon name="users" size={15} />
@@ -488,7 +489,7 @@ function AdminDashboard({ docs, queues }: { docs: DocumentItem[]; queues: Queue[
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
                   <div style={{ fontSize: 11.5, color: colors.textFaint }}>
-                    {d.date} · {d.size}
+                    {d.date ? formatWhen(d.date) : "—"} · {d.size}
                   </div>
                 </div>
                 <StatusChip status={d.status} />

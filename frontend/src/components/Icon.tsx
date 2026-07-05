@@ -7,6 +7,7 @@ const PATHS: Record<string, string> = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
   upload: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>',
+  download: '<path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/>',
   queues:
     '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6.2 8-6.2S20 16 20 20"/>',
@@ -76,4 +77,12 @@ export function queueTypeIcon(qtype: string): IconName {
     Пересдача: "retry",
   };
   return map[qtype] ?? "queues";
+}
+
+/** Человекочитаемое название типа очереди (backend может отдавать enum-значения). */
+export function queueTypeLabel(qtype: string): string {
+  const map: Record<string, string> = {
+    practice_defense: "Защита практики",
+  };
+  return map[qtype] ?? qtype;
 }
