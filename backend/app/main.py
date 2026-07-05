@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
 from app.api.v1 import auth, documents, search, queues, integrations, schedule
@@ -77,6 +78,8 @@ app = FastAPI(
     openapi_tags=_TAGS_METADATA,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,

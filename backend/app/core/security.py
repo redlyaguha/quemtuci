@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.models.user import UserRole
 from app.schemas.auth import UserPublic
 
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 def create_access_token(user: UserPublic) -> str:
@@ -65,8 +65,14 @@ def _decode(token: str) -> UserPublic:
 
 
 def get_current_user(
-    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> UserPublic:
+    if creds is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен отсутствует",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return _decode(creds.credentials)
 
 
